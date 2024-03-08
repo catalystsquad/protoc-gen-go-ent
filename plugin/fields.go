@@ -87,6 +87,10 @@ func getFieldMessage(field *protogen.Field) *protogen.Message {
 	return field.Message
 }
 
+func getFieldMessageType(field *protogen.Field) string {
+	return getMessageProtoName(getFieldMessage(field))
+}
+
 func getFieldName(field *protogen.Field) string {
 	return strcase.ToSnake(getFieldGoName(field))
 }

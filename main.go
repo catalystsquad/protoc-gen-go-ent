@@ -17,9 +17,14 @@ func main() {
 	protogen.Options{ParamFunc: flag.CommandLine.Set}.Run(func(gen *protogen.Plugin) error {
 		for _, f := range gen.Files {
 			if !f.Generate {
+				glog.Infof("skipping file: %s", f.Desc.FullName())
 				continue
 			}
-			return plugin.HandleProtoFile(gen, f)
+			glog.Infof("handling file: %s", f.Desc.FullName())
+			err := plugin.HandleProtoFile(gen, f)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

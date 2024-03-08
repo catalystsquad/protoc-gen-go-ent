@@ -12,9 +12,8 @@ enum Origin {
   ORIGIN_FOREIGN = 2;
 }
 
-message Person {
-  option (ent.opts) = {gen: true, additionalImports: ["time"]};
-  // scalar fields
+message Fields {
+  option (ent.opts) = {gen: true};
   string astring = 1;
   bool bool = 2;
   int32 int32 = 3;
@@ -30,19 +29,12 @@ message Person {
   float float = 13;
   double double = 14;
   optional string optional_string = 28;
-  Origin origin = 15[(ent.field).includeUnspecifiedEnum = true]; // an enum that should include the _UNSPECIFIED value, which is false by default
   Origin required_origin = 16;
-  // edges
-  // o2o two types
-  Vehicle vehicle = 17;
-  // o2m two types
-  repeated Pet pets = 18;
-  // o2o same type
-//  Person mother = 18;
-  // o2o bidirectional
-  // o2m same type
-//  repeated Person children = 28 [(ent.field).edge_options.ref="mother"];
-  // field options
+}
+
+// a message that exercises field options
+message FieldOptions {
+  option (ent.opts) = {gen: true, additionalImports: ["time"]};
   string nillableString = 19 [(ent.field).nillable = true];
   string defaultString = 20 [(ent.field).default = "\"weh\""];
   string defaultStringFunc = 21 [(ent.field).defaultFunc = "time.Now"];
@@ -52,17 +44,5 @@ message Person {
   string commented = 25 [(ent.field).comment = "a neat comment"];
   string storageKey = 26 [(ent.field).storage_key = "some_column_name"];
   string struct_tag = 27 [(ent.field).struct_tag = "`json:\"omitempty\"`"];
-  // edge options
-}
-
-message Vehicle {
-  option (ent.opts) = {gen: true};
-  string make = 1;
-  Person owner = 2 [(ent.field).edge_options = {ref: "vehicle"}];
-}
-
-message Pet {
-  option (ent.opts) = {gen: true};
-  string name = 1;
-  Person owner = 2 [(ent.field).edge_options = {ref: "pets"}];
+  Origin origin = 15 [(ent.field).includeUnspecifiedEnum = true]; // an enum that should include the _UNSPECIFIED value, which is false by default
 }

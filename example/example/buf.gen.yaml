@@ -1,9 +1,5 @@
 version: v1
 plugins:
-#  - name: debug
-#    out: example
-#    opt:
-#      - test # this shouldn't work but it does. This plugin uses --debug_out instead of out, so I'm assuming it's an issue with the plugin
   - name: go-ent
     out: example
     opt:
