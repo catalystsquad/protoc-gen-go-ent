@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package ent;
+
+option go_package = "github.com/catalystsquad/protoc-gen-go-ent/options;ent";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions {
+  EntMessageOptions opts = 52119;
+}
+
+message EntMessageOptions {
+  bool gen = 1;
+  repeated string additionalImports = 2;
+}
+
+// Field level specifications
+extend google.protobuf.FieldOptions {
+  EntFieldOptions field = 52119;
+}
+message EntFieldOptions {
+  bool ignore = 1;
+  bool nillable = 2;
+  string default = 3;
+  string defaultFunc = 4;
+  bool unique = 5;
+  bool immutable = 6;
+  string comment = 7;
+  string storage_key = 8;
+  string struct_tag = 9;
+  bool includeUnspecifiedEnum = 10;
+  EntEdgeOptions edge_options = 11;
+}
+
+message EntEdgeOptions {
+  string to = 1;
+  string from = 2;
+  bool required = 3;
+  bool immutable = 4;
+  EdgeStorageKey storage_key = 5;
+  string structTag = 6;
+  string comment = 7;
+  string ref = 9;
+}
+
+message EdgeStorageKey {
+  string table = 1;
+  string column = 2;
+  repeated string columns = 3;
+  string symbol = 4;
+  repeated string symbols = 5;
+}

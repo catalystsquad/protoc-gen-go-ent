@@ -1,6 +1,8 @@
 package plugin
 
-import "google.golang.org/protobuf/compiler/protogen"
+import (
+	"google.golang.org/protobuf/compiler/protogen"
+)
 
 func HandleProtoFile(gen *protogen.Plugin, file *protogen.File) error {
 	for _, message := range file.Messages {

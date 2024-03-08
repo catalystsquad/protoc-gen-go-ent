@@ -2,8 +2,10 @@ package plugin
 
 import (
 	"fmt"
+	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
 	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
 )
 
 func HandleProtoMessage(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) error {
@@ -12,8 +14,11 @@ func HandleProtoMessage(gen *protogen.Plugin, file *protogen.File, message *prot
 		writeFileHeader(g, file, message)
 		writeImports(g, message)
 		writeStruct(g, message)
-		writeFields(g, message)
-		writeEdges(g, message)
+		WriteFields(g, message)
+		err := WriteEdges(g, message)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -42,6 +47,10 @@ func getMessageFileImportPath(file *protogen.File) protogen.GoImportPath {
 
 func getMessageGoName(message *protogen.Message) string {
 	return message.GoIdent.GoName
+}
+
+func getMessageProtoName(message *protogen.Message) string {
+	return string(message.Desc.Name())
 }
 
 func writeFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *protogen.Message) {
@@ -76,4 +85,21 @@ func writeStruct(g *protogen.GeneratedFile, message *protogen.Message) {
 
 func getMessageStructName(message *protogen.Message) string {
 	return getMessageGoName(message)
+}
+
+func getMessageOptions(message *protogen.Message) ent.EntMessageOptions {
+	options := message.Desc.Options()
+	if options == nil {
+		return ent.EntMessageOptions{}
+	}
+	v := proto.GetExtension(options, ent.E_Opts)
+	if v == nil {
+		return ent.EntMessageOptions{}
+	}
+
+	opts, ok := v.(*ent.EntMessageOptions)
+	if !ok || opts == nil {
+		return ent.EntMessageOptions{}
+	}
+	return *opts
 }

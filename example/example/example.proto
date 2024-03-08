@@ -29,11 +29,14 @@ message Person {
   fixed64 fixed64 = 12;
   float float = 13;
   double double = 14;
+  optional string optional_string = 28;
   Origin origin = 15[(ent.field).includeUnspecifiedEnum = true]; // an enum that should include the _UNSPECIFIED value, which is false by default
   Origin required_origin = 16;
   // edges
   // o2o two types
   Vehicle vehicle = 17;
+  // o2m two types
+  repeated Pet pets = 18;
   // o2o same type
 //  Person mother = 18;
   // o2o bidirectional
@@ -55,5 +58,11 @@ message Person {
 message Vehicle {
   option (ent.opts) = {gen: true};
   string make = 1;
-  Person owner = 2;
+  Person owner = 2 [(ent.field).edge_options = {ref: "vehicle"}];
+}
+
+message Pet {
+  option (ent.opts) = {gen: true};
+  string name = 1;
+  Person owner = 2 [(ent.field).edge_options = {ref: "pets"}];
 }
