@@ -6,13 +6,69 @@ option go_package = "protoc-gen-go-ent/example";
 
 import "options/ent.proto";
 
+// this proto defines messages that represent the edge relationships documented here https://entgo.io/docs/schema-edges
 // one to one two types
-message User {
+message OTOUser {
   option (ent.opts) = {gen: true};
-  Card card = 1;
+  OTOCard card = 1;
 }
 
-message Card {
+message OTOCard {
   option (ent.opts) = {gen: true};
-  User owner = 2[(ent.field).edge_options = {ref: "card"}];
+  OTOUser owner = 2 [(ent.field).edge_options = {ref: "card"}];
+}
+
+// one to one same type
+message OTONode {
+  option (ent.opts) = {gen: true};
+  OTONode next = 1;
+  OTONode previous = 2 [(ent.field).edge_options = {ref: "next"}];
+}
+
+//  one to one bidirectional
+message OTOBidirectionalUser {
+  option (ent.opts) = {gen: true};
+  OTOBidirectionalUser spouse = 1 [(ent.field).edge_options = {ref: "spouse"}];
+}
+
+// one to many two types
+message OTMUser {
+  option (ent.opts) = {gen: true};
+  repeated OTMPet pets = 1;
+}
+
+message OTMPet {
+  option (ent.opts) = {gen: true};
+  OTMUser owner = 1 [(ent.field).edge_options = {ref: "pets"}];
+}
+
+// one to many same type
+message OTMNode {
+  option (ent.opts) = {gen: true};
+  OTMNode parent = 1 [(ent.field).edge_options = {ref: "children"}];
+  repeated OTMNode children = 2;
+}
+
+// many to many two types
+message M2MUser {
+  option (ent.opts) = {gen: true};
+  repeated M2MGroup groups = 1 [(ent.field).edge_options = {ref: "users"}];
+}
+
+message M2MGroup {
+  option (ent.opts) = {gen: true};
+  repeated M2MUser users = 1;
+}
+
+// many to many same type
+message M2MSameUser {
+  option (ent.opts) = {gen: true};
+  repeated M2MSameUser followers = 1 [(ent.field).edge_options = {ref: "following"}];
+  repeated M2MSameUser following = 2;
+}
+
+// many to many bidirectional
+message M2MBidirectionalUser {
+  option (ent.opts) = {gen: true};
+  repeated M2MBidirectionalUser friends = 1 [(ent.field).edge_options = {ref: "friends"}];
 }

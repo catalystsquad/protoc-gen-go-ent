@@ -81,7 +81,8 @@ func shouldIncludeFieldInEdges(field *protogen.Field) bool {
 
 func writeEdge(g *protogen.GeneratedFile, edge *protogen.Field) error {
 	builder := &strings.Builder{}
-	err := writeEdgeBase(builder, edge)
+	writeEdgeBase(builder, edge)
+	err := writeEdgeUnique(builder, edge)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,43 @@ func writeEdge(g *protogen.GeneratedFile, edge *protogen.Field) error {
 	return nil
 }
 
-func writeEdgeBase(builder *strings.Builder, edge *protogen.Field) error {
+func writeEdgeBase(builder *strings.Builder, edge *protogen.Field) {
+	if edgeHasRef(edge) && !edgeIsBidirectional(edge) {
+		// if this edge has a ref specified then it's either a From() edge or a bidirectional edge
+		writeFrom(builder, edge)
+		writeRef(builder, edge)
+	} else {
+		writeTo(builder, edge)
+	}
+}
+
+func writeEdgeUnique(builder *strings.Builder, edge *protogen.Field) error {
+	cardinality, err := getEdgeCardinality(edge)
+	if err != nil {
+		return err
+	}
+	if cardinality == OneToOne || cardinality == ManyToOne {
+		builder.WriteString(".Unique()")
+	}
+
+	return nil
+}
+
+func edgeHasRef(edge *protogen.Field) bool {
+	return getEdgeRef(edge) != ""
+}
+
+func edgeIsBidirectional(edge *protogen.Field) bool {
+	// an edge is bidirectional when the field is referencing itself and the field and parent types are equal
+	return getEdgeRef(edge) == getFieldProtoName(edge) && getFieldParentMessageType(edge) == getFieldMessageType(edge)
+}
+
+func edgeIsReferenced(edge *protogen.Field) bool {
+	fieldReferencingEdge := getFieldReferencingEdge(edge)
+	return fieldReferencingEdge != nil
+}
+
+func writeEdgeBasebak(builder *strings.Builder, edge *protogen.Field) error {
 	cardinality, err := getEdgeCardinality(edge)
 	glog.Infof("edge cardinality: %s", cardinality)
 	if err != nil {
@@ -224,13 +261,30 @@ func getEdgeOptions(field *protogen.Field) *ent.EntEdgeOptions {
 }
 
 func writeFrom(builder *strings.Builder, field *protogen.Field) {
+	builder.WriteString("edge.From(\"")
+	writeEdgeNameAndType(builder, field)
+	builder.WriteString(".Type)")
+}
+
+func writeRef(builder *strings.Builder, field *protogen.Field) {
+	ref := getEdgeRef(field)
+	builder.WriteString(".Ref(\"")
+	builder.WriteString(ref)
+	builder.WriteString("\")")
+}
+
+func writeTo(builder *strings.Builder, field *protogen.Field) {
+	builder.WriteString("edge.To(\"")
+	writeEdgeNameAndType(builder, field)
+	builder.WriteString(".Type)")
+}
+
+func writeEdgeNameAndType(builder *strings.Builder, field *protogen.Field) {
 	edgeName := getEdgeName(field)
 	edgeType := getEdgeType(field)
-	builder.WriteString("edge.From(\"")
 	builder.WriteString(edgeName)
 	builder.WriteString("\", ")
 	builder.WriteString(edgeType)
-	builder.WriteString(".Type)")
 }
 
 func getEdgeName(field *protogen.Field) string {
@@ -275,6 +329,31 @@ func writeUnique(builder *strings.Builder, field *protogen.Field) error {
 //	otherEdgeFieldIsRepeated := fieldIsRepeated(otherEdgeField)
 //	return !thisFieldIsRepeated && otherEdgeFieldIsRepeated
 //}
+
+func getFieldReferencingEdge(edge *protogen.Field) (fieldReferencingEdge *protogen.Field) {
+	edgeName := getFieldProtoName(edge)
+	fieldMessage := getFieldMessage(edge)
+	for _, field := range fieldMessage.Fields {
+		ref := getEdgeRef(field)
+		if ref == edgeName {
+			fieldReferencingEdge = field
+		}
+	}
+
+	return
+}
+
+func getFieldReferencedByEdge(edge *protogen.Field) (fieldReferencedByEdge *protogen.Field) {
+	ref := getEdgeRef(edge)
+	otherEdgeMessage := getFieldMessage(edge)
+	for _, field := range otherEdgeMessage.Fields {
+		if ref == getFieldProtoName(field) {
+			fieldReferencedByEdge = field
+		}
+	}
+
+	return
+}
 
 func getOtherEdgeField(field *protogen.Field) (*protogen.Field, error) {
 	otherEdgeMessage := getFieldMessage(field)
@@ -374,32 +453,48 @@ func getEdgeMessage(edge *protogen.Field) *protogen.Message {
 	return getFieldParentMessage(edge)
 }
 
-func isOneToOne(edge *protogen.Field) bool {
-	a, b := getEdgeMessages(edge)
-	aHasOneFieldOfTypeB := messageHasFieldsOfOtherMessage(1, a, b)
-	bHasOneFieldOfTypeA := messageHasFieldsOfOtherMessage(1, b, a)
-	return aHasOneFieldOfTypeB && bHasOneFieldOfTypeA
+func getOtherEdgeByRef(edge *protogen.Field) (otherEdge *protogen.Field, err error) {
+	otherEdge = getFieldReferencedByEdge(edge)
+	if otherEdge == nil {
+		otherEdge = getFieldReferencingEdge(edge)
+	}
+	if otherEdge == nil {
+		err = errors.New(fmt.Sprintf("unable to find edge referencing, or referenced by field %s", getQualifiedProtoFieldName(edge)))
+	}
+	return
 }
 
-func isOneToMany(edge *protogen.Field) bool {
-	a, b := getEdgeMessages(edge)
-	aHasOneRepeatedFieldOfTypeB := messageHasRepeatedFieldsOfOtherMessage(1, a, b)
-	bHasOneFieldOfTypeA := messageHasFieldsOfOtherMessage(1, b, a)
-	return aHasOneRepeatedFieldOfTypeB && bHasOneFieldOfTypeA
+func isOneToOne(edge *protogen.Field) (bool, error) {
+	otherEdge, err := getOtherEdgeByRef(edge)
+	if err != nil {
+		return false, err
+	}
+	return !fieldIsRepeated(edge) && !fieldIsRepeated(otherEdge), nil
+
 }
 
-func isManyToOne(edge *protogen.Field) bool {
-	a, b := getEdgeMessages(edge)
-	aHasOneFieldOfTypeb := messageHasFieldsOfOtherMessage(1, a, b)
-	bHasOneRepeatedFieldOfTypeA := messageHasRepeatedFieldsOfOtherMessage(1, b, a)
-	return aHasOneFieldOfTypeb && bHasOneRepeatedFieldOfTypeA
+func isOneToMany(edge *protogen.Field) (bool, error) {
+	otherEdge, err := getOtherEdgeByRef(edge)
+	if err != nil {
+		return false, err
+	}
+	return fieldIsRepeated(edge) && !fieldIsRepeated(otherEdge), nil
 }
 
-func isManyToMany(edge *protogen.Field) bool {
-	a, b := getEdgeMessages(edge)
-	aHasOneRepeatedFieldOfTypeB := messageHasRepeatedFieldsOfOtherMessage(1, a, b)
-	bHasOneRepeatedFieldOfTypeA := messageHasRepeatedFieldsOfOtherMessage(1, b, a)
-	return aHasOneRepeatedFieldOfTypeB && bHasOneRepeatedFieldOfTypeA
+func isManyToOne(edge *protogen.Field) (bool, error) {
+	otherEdge, err := getOtherEdgeByRef(edge)
+	if err != nil {
+		return false, err
+	}
+	return !fieldIsRepeated(edge) && fieldIsRepeated(otherEdge), nil
+}
+
+func isManyToMany(edge *protogen.Field) (bool, error) {
+	otherEdge, err := getOtherEdgeByRef(edge)
+	if err != nil {
+		return false, err
+	}
+	return fieldIsRepeated(edge) && fieldIsRepeated(otherEdge), nil
 }
 
 func isBidirectional(edge *protogen.Field) bool {
@@ -458,18 +553,83 @@ func getEdgeEdgeType(edge *protogen.Field) (edgeType EdgeType, err error) {
 	return
 }
 
-func getEdgeCardinality(edge *protogen.Field) (cardinality EdgeCardinality, err error) {
-	if isOneToOne(edge) {
+func getEdgeCardinality(edge *protogen.Field) (EdgeCardinality, error) {
+	oneToOne, err := isOneToOne(edge)
+	if err != nil {
+		return UnknownEdgeCardinality, err
+	}
+	if oneToOne {
+		return OneToOne, nil
+	}
+	oneToMany, err := isOneToMany(edge)
+	if err != nil {
+		return UnknownEdgeCardinality, err
+	}
+	if oneToMany {
+		return OneToMany, nil
+	}
+	manyToOne, err := isManyToOne(edge)
+	if err != nil {
+		return UnknownEdgeCardinality, err
+	}
+	if manyToOne {
+		return ManyToOne, nil
+	}
+	manyToMany, err := isManyToMany(edge)
+	if err != nil {
+		return UnknownEdgeCardinality, err
+	}
+	if manyToMany {
+		return ManyToMany, nil
+	}
+
+	return UnknownEdgeCardinality, errors.New(fmt.Sprintf("unknown cardinality for field: %s", getQualifiedProtoFieldName(edge)))
+}
+
+// getSpecifiedEdgeCardinality checks the edge fields for a ref option and determines the cardinality based on the ref
+// if no ref is found then the cardinality is not specified
+//func getSpecifiedEdgeCardinality(edge *protogen.Field) (EdgeCardinality, error) {
+//	edgeRef := getEdgeRef(edge)
+//	if edgeRef != "" {
+//		// this edge has a ref to another edge, get the other edge field
+//		fieldMessage := getFieldMessage(edge)
+//		matchedField := getMessageField(edgeRef, fieldMessage)
+//		if matchedField == nil {
+//			return UnknownEdgeCardinality, errors.New(fmt.Sprintf("field: %s specifies ref: %s but type %s has no field named %s", getQualifiedProtoFieldName(edge), edgeRef, getMessageProtoName(fieldMessage), edgeRef))
+//		}
+//	} else {
+//	}
+//}
+
+func getCardinalityOfFields(a, b *protogen.Field) (cardinality EdgeCardinality, err error) {
+	cardinality = UnknownEdgeCardinality
+	if fieldsAreOneToOne(a, b) {
 		cardinality = OneToOne
-	} else if isOneToMany(edge) {
+	} else if fieldsAreOneToMany(a, b) {
 		cardinality = OneToMany
-	} else if isManyToOne(edge) {
+	} else if fieldsAreManyToOne(a, b) {
 		cardinality = ManyToOne
-	} else if isManyToMany(edge) {
-		cardinality = ManyToMany
+	} else if fieldsAreManyToMany(a, b) {
+		cardinality = OneToOne
 	} else {
-		err = errors.New(fmt.Sprintf("unknown cardinality for field: %s.%s", getFieldParentMessageType(edge), getFieldName(edge)))
+		err = errors.New(fmt.Sprintf("unable to determine cardinality between fields %s and %s", getQualifiedProtoFieldName(a), getQualifiedProtoFieldName(b)))
 	}
 
 	return
+}
+
+func fieldsAreOneToOne(a, b *protogen.Field) bool {
+	return !fieldIsRepeated(a) && !fieldIsRepeated(b)
+}
+
+func fieldsAreOneToMany(a, b *protogen.Field) bool {
+	return !fieldIsRepeated(a) && fieldIsRepeated(b)
+}
+
+func fieldsAreManyToOne(a, b *protogen.Field) bool {
+	return fieldIsRepeated(a) && !fieldIsRepeated(b)
+}
+
+func fieldsAreManyToMany(a, b *protogen.Field) bool {
+	return fieldIsRepeated(a) && fieldIsRepeated(b)
 }

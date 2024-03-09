@@ -67,9 +67,6 @@ func getMessageFilePackageName(file *protogen.File) string {
 
 func writeImports(g *protogen.GeneratedFile, message *protogen.Message) {
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent"})
-	if len(message.Fields) > 0 {
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema/field"})
-	}
 	messageOptions := getMessageOptions(message)
 	for _, additonalImport := range messageOptions.AdditionalImports {
 		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: protogen.GoImportPath(additonalImport)})
@@ -102,4 +99,14 @@ func getMessageOptions(message *protogen.Message) ent.EntMessageOptions {
 		return ent.EntMessageOptions{}
 	}
 	return *opts
+}
+
+func getMessageField(name string, message *protogen.Message) *protogen.Field {
+	for _, field := range message.Fields {
+		if getFieldProtoName(field) == name {
+			return field
+		}
+	}
+
+	return nil
 }

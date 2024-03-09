@@ -19,6 +19,7 @@ func WriteFields(g *protogen.GeneratedFile, message *protogen.Message) {
 	if len(fields) == 0 {
 		g.P("return nil")
 	} else {
+		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema/field"})
 		g.P("return []ent.Field{")
 		for _, field := range fields {
 			writeField(g, field)
@@ -289,4 +290,8 @@ func getFieldParentMessage(field *protogen.Field) *protogen.Message {
 
 func getFieldParentMessageType(field *protogen.Field) string {
 	return getMessageProtoName(getFieldParentMessage(field))
+}
+
+func getQualifiedProtoFieldName(field *protogen.Field) string {
+	return fmt.Sprintf("%s.%s", getFieldParentMessageType(field), getFieldProtoName(field))
 }
