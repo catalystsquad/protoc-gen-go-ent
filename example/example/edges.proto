@@ -76,10 +76,10 @@ message M2MBidirectionalUser {
 // a message that exercises edge options
 message Person {
   option (ent.opts) = {gen: true};
-  Address address = 1 [(ent.field).edge_options = {storage_key: {table: "persons", columns: ["custom_addess_column_name", "custom_person_column_name"], symbols: ["custom_addess_symbol", "custom_person_symbol"]}}];
+  repeated Address address = 1 [(ent.field).edge_options = {storage_key: {table: "persons", columns: ["custom_addess_column_name", "custom_person_column_name"], symbols: ["custom_addess_symbol", "custom_person_symbol"]}}];
 }
 
 message Address {
   option (ent.opts) = {gen: true};
-  Person resident = 1 [(ent.field).edge_options = {ref: "address", required: true, immutable: true, comment: "weh"}];
+  repeated Person resident = 1 [(ent.field).edge_options = {ref: "address", required: true, immutable: true, comment: "weh"}];
 }

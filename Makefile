@@ -18,6 +18,9 @@ clean:
 	rm -f example/cockroachdb/*.go
 	rm -f example/postgres/*.go
 	rm -f options/*.go
+generate-ent:
+	cp example/example/**.go ent/ent/schema
+	cd ent && go generate
 generate: clean build-options build-example
 test: generate
 	go test -v ./test

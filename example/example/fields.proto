@@ -37,7 +37,7 @@ message FieldOptions {
   option (ent.opts) = {gen: true, additionalImports: ["time"]};
   string nillableString = 19 [(ent.field).nillable = true];
   string defaultString = 20 [(ent.field).default = "\"weh\""];
-  string defaultStringFunc = 21 [(ent.field).defaultFunc = "time.Now"];
+  string defaultStringFunc = 21 [(ent.field).defaultFunc = "time.Now().String"];
   string ignoredField = 22 [(ent.field).ignore = true];
   string uniqueField = 23 [(ent.field).unique = true];
   string createdAt = 24 [(ent.field).immutable = true];
