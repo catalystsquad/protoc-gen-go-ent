@@ -6,6 +6,7 @@ import (
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
 	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"strings"
@@ -86,6 +87,11 @@ func writeEdge(g *protogen.GeneratedFile, edge *protogen.Field) error {
 	if err != nil {
 		return err
 	}
+	writeEdgeRequired(builder, edge)
+	writeEdgeImmutable(builder, edge)
+	writeEdgeStorageKey(builder, edge)
+	writeEdgeStructTags(builder, edge)
+	writeEdgeComment(builder, edge)
 	g.P(builder.String(), ",")
 	return nil
 }
@@ -110,6 +116,88 @@ func writeEdgeUnique(builder *strings.Builder, edge *protogen.Field) error {
 	}
 
 	return nil
+}
+
+func writeEdgeRequired(builder *strings.Builder, edge *protogen.Field) {
+	if getEdgeOptions(edge).Required {
+		builder.WriteString(".Required()")
+	}
+}
+
+func writeEdgeImmutable(builder *strings.Builder, edge *protogen.Field) {
+	if getEdgeOptions(edge).Immutable {
+		builder.WriteString(".Immutable()")
+	}
+}
+
+func writeEdgeStorageKey(builder *strings.Builder, edge *protogen.Field) {
+	options := getEdgeOptions(edge)
+	if options.StorageKey != nil {
+		builder.WriteString(".StorageKey(")
+		writeStorageKeyTable(builder, edge)
+		writeStorageKeyColumns(builder, edge)
+		writeStorageKeySymbols(builder, edge)
+		builder.WriteString(")")
+	}
+}
+
+func writeEdgeStructTags(builder *strings.Builder, edge *protogen.Field) {
+	options := getEdgeOptions(edge)
+	if options.StructTag != "" {
+		builder.WriteString(".StructTag(`")
+		builder.WriteString(options.StructTag)
+		builder.WriteString("`)")
+	}
+}
+
+func writeEdgeComment(builder *strings.Builder, edge *protogen.Field) {
+	options := getEdgeOptions(edge)
+	if options.Comment != "" {
+		builder.WriteString(".Comment(\"")
+		builder.WriteString(options.Comment)
+		builder.WriteString("\")")
+	}
+}
+
+func writeStorageKeyTable(builder *strings.Builder, edge *protogen.Field) {
+	storageKeyOptions := getEdgeOptions(edge).StorageKey
+	table := storageKeyOptions.Table
+	if table != "" {
+		builder.WriteString("edge.Table(\"")
+		builder.WriteString(table)
+		builder.WriteString("\")")
+		if len(storageKeyOptions.Columns) > 0 || len(storageKeyOptions.Symbols) > 0 {
+			builder.WriteString(",")
+		}
+	}
+}
+
+func writeStorageKeyColumns(builder *strings.Builder, edge *protogen.Field) {
+	storageKeyOptions := getEdgeOptions(edge).StorageKey
+	columns := storageKeyOptions.Columns
+	if len(columns) > 0 {
+		builder.WriteString("edge.Columns(")
+		columns = lo.Map(columns, func(item string, index int) string {
+			return fmt.Sprintf("\"%s\"", item)
+		})
+		builder.WriteString(strings.Join(columns, ","))
+		builder.WriteString(")")
+		if len(storageKeyOptions.Symbols) > 0 {
+			builder.WriteString(",")
+		}
+	}
+}
+
+func writeStorageKeySymbols(builder *strings.Builder, edge *protogen.Field) {
+	symbols := getEdgeOptions(edge).StorageKey.Symbols
+	if len(symbols) > 0 {
+		builder.WriteString("edge.Symbols(")
+		symbols = lo.Map(symbols, func(item string, index int) string {
+			return fmt.Sprintf("\"%s\"", item)
+		})
+		builder.WriteString(strings.Join(symbols, ","))
+		builder.WriteString(")")
+	}
 }
 
 func edgeHasRef(edge *protogen.Field) bool {
