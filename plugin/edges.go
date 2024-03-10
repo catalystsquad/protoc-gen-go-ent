@@ -39,7 +39,7 @@ func (c EdgeCardinality) String() string {
 	return []string{"UnknownEdgeCardinality", "OneToOne", "OneToMany", "ManyToOne", "ManyToMany"}[c]
 }
 
-func WriteEdges(g *protogen.GeneratedFile, message *protogen.Message) error {
+func WriteSchemaFileEdges(g *protogen.GeneratedFile, message *protogen.Message) error {
 	messageGoName := getMessageGoName(message)
 	g.P(fmt.Sprintf("func (%s) Edges() []ent.Edge {", messageGoName))
 	edgeFields := getEdgeFields(message)

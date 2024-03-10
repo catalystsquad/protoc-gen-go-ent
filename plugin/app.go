@@ -7,36 +7,54 @@ import (
 	"strings"
 )
 
-func GenerateEnt(gen *protogen.Plugin) error {
-	glog.Infof("------------------------------------------------------ generating ent stuff ------------------------------------------------------------")
+const appPackageName = "app"
+
+func GenerateApp(gen *protogen.Plugin) error {
 	writeGenerate(gen)
 	writeEntc(gen)
 	writeGqlGen(gen)
 	writeResolver(gen)
-	writeResolvers(gen)
+	writeEntResolvers(gen)
 	writeServer(gen)
 	writeGoMod(gen)
 	return nil
 }
 
+func getAppDirectory() string {
+	return "app"
+}
+
+func getEntDirectory() string {
+	return "ent"
+}
+
+func getAppFileName(paths ...string) string {
+	path := []string{getAppDirectory()}
+	path = append(path, paths...)
+	return strings.Join(path, "/")
+}
+
 func writeGenerate(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/generate.go", "")
-	g.P("package ent")
+	fileName := getAppFileName("generate.go")
+	g := gen.NewGeneratedFile(fileName, "")
+	g.P("package ", appPackageName)
 	g.P()
 	g.P(`//go:generate go run -mod=mod ./ent/entc.go`)
 	g.P(`//go:generate go run -mod=mod github.com/99designs/gqlgen`)
 }
 
 func writeEntc(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/ent/entc.go", "")
+	fileName := getAppFileName(getEntDirectory(), "entc.go")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(entcContent)
 }
 
 func writeGqlGen(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/gqlgen.yml", "")
+	fileName := getAppFileName("gqlgen.yml")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(gqlgenContent)
 	g.P("autobind:")
-	g.P("  - entgen/ent")
+	g.P("  - app/ent")
 	for _, f := range gen.Files {
 		if !f.Generate {
 			continue
@@ -44,7 +62,23 @@ func writeGqlGen(gen *protogen.Plugin) {
 		for _, m := range f.Messages {
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
-				thing := fmt.Sprintf("  - entgen/ent/%s", strings.ToLower(messageProtoName))
+				thing := fmt.Sprintf("  - app/ent/%s", strings.ToLower(messageProtoName))
+				glog.Infof(thing)
+				g.P(thing)
+			} else {
+			}
+		}
+	}
+	g.P("schema:")
+	g.P("  - ent.graphql")
+	for _, f := range gen.Files {
+		if !f.Generate {
+			continue
+		}
+		for _, m := range f.Messages {
+			if getMessageOptions(m).Gen {
+				messageProtoName := getMessageProtoName(m)
+				thing := fmt.Sprintf("  - %s.graphql", strings.ToLower(messageProtoName))
 				glog.Infof(thing)
 				g.P(thing)
 			} else {
@@ -54,21 +88,23 @@ func writeGqlGen(gen *protogen.Plugin) {
 }
 
 func writeResolver(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/resolver.go", "")
+	fileName := getAppFileName("resolver.go")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(resolverContent)
 }
 
-func writeResolvers(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/ent.resolvers.go", "")
+func writeEntResolvers(gen *protogen.Plugin) {
+	fileName := getAppFileName("ent.resolvers.go")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(resolversContent)
 	for _, f := range gen.Files {
 		if !f.Generate {
-			glog.Infof("writeResolvers skipping file: %s", f.Desc.FullName())
+			glog.Infof("writeEntResolvers skipping file: %s", f.Desc.FullName())
 			continue
 		}
-		glog.Infof("writeResolvers handling file: %s", f.Desc.FullName())
+		glog.Infof("writeEntResolvers handling file: %s", f.Desc.FullName())
 		for _, m := range f.Messages {
-			glog.Infof("writeResolvers handling message %s", getMessageProtoName(m))
+			glog.Infof("writeEntResolvers handling message %s", getMessageProtoName(m))
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
 				definition := fmt.Sprintf("func (r *queryResolver) %s(ctx context.Context) ([]*ent.%s, error) {return r.client.%s.Query().All(ctx)}", messageProtoName+"s", messageProtoName, messageProtoName)
@@ -81,17 +117,19 @@ func writeResolvers(gen *protogen.Plugin) {
 }
 
 func writeServer(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/cmd/graphql/main.go", "")
+	fileName := getAppFileName("cmd", "graphql", "main.go")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(serverContent)
 }
 
 func writeGoMod(gen *protogen.Plugin) {
-	g := gen.NewGeneratedFile("example/ent/go.mod", "")
+	fileName := getAppFileName("go.mod")
+	g := gen.NewGeneratedFile(fileName, "")
 	g.P(goModContent)
 }
 
 var resolversContent = `
-package ent
+package app
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -99,7 +137,7 @@ package ent
 
 import (
 	"context"
-	"entgen/ent"
+	"app/ent"
 	"fmt"
 )
 
@@ -119,7 +157,7 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 type queryResolver struct{ *Resolver }
 `
 var goModContent = `
-module entgen
+module app
 
 go 1.21
 
@@ -161,9 +199,9 @@ package main
 
 import (
 	"context"
-	entgen "entgen"
-	"entgen/ent"
-	"entgen/ent/migrate"
+	"app"
+	"app/ent"
+	"app/ent/migrate"
 	"log"
 	"net/http"
 
@@ -188,7 +226,7 @@ func main() {
 	}
 
 	// Configure the server and start listening on :8081.
-	srv := handler.NewDefaultServer(entgen.NewSchema(client))
+	srv := handler.NewDefaultServer(app.NewSchema(client))
 	http.Handle("/",
 		playground.Handler("Todo", "/query"),
 	)
@@ -201,10 +239,10 @@ func main() {
 `
 
 var resolverContent = `
-package ent
+package app
 
 import (
-    "entgen/ent"
+    "app/ent"
     
     "github.com/99designs/gqlgen/graphql"
 )
@@ -221,10 +259,6 @@ func NewSchema(client *ent.Client) graphql.ExecutableSchema {
 `
 
 var gqlgenContent = `
-# schema tells gqlgen where the GraphQL schema is located.
-schema:
-  - ent.graphql
-
 # resolver reports where the resolver implementations go.
 resolver:
   layout: follow-schema
@@ -240,7 +274,7 @@ models:
       - github.com/99designs/gqlgen/graphql.IntID
   Node:
     model:
-      - entgen/ent.Noder
+      - app/ent.Noder
 `
 
 var entcContent = `

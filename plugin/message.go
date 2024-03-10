@@ -2,48 +2,114 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
-	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
+	"strings"
 )
 
 func HandleProtoMessage(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) error {
 	if shouldHandleMessage(message) {
-		g := createFile(gen, file, message)
-		writeFileHeader(g, file, message)
-		writeImports(g, message)
-		writeStruct(g, message)
-		WriteFields(g, message)
-		WriteAnnotations(g, message)
-		err := WriteEdges(g, message)
+		err := writeSchemaFile(gen, file, message)
 		if err != nil {
 			return err
 		}
+		if *config.GenerateApp {
+			writeGraphqlFile(gen, file, message)
+			writeResolvers(gen, file, message)
+		}
+
 	}
 
 	return nil
 }
+
+func writeSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) error {
+	g := createSchemaFile(gen, file, message)
+	writeSchemaFileHeader(g, file, message)
+	writeSchemaFileImports(g, message)
+	writeSchemaFileStruct(g, message)
+	WriteSchemaFileFields(g, message)
+	WriteSchemaFileAnnotations(g, message)
+	err := WriteSchemaFileEdges(g, message)
+	return err
+}
+
+func writeGraphqlFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) {
+	g := createGraphqlFile(gen, file, message)
+	name := getMessageProtoName(message)
+	g.P("type Mutation {")
+	g.P("  create", name, "(input: Create", name, "Input!): ", name, "!")
+	g.P("  update", name, "(id: ID!, input: Update", name, "Input!): ", name, "!")
+	g.P("  delete", name, "(id: ID!): Boolean!")
+	g.P("}")
+}
+
+func writeResolvers(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) {
+	g := createResolversFile(gen, file, message)
+	g.P(getResolversContent(message))
+}
+
+func getResolversContent(message *protogen.Message) string {
+	return strings.Replace(resolversTemplate, "Blarf", getMessageProtoName(message), -1)
+}
+
+var resolversTemplate = `
+
+package app
+
+// CreateBlarf is the resolver for the createBlarf field.
+func (r *mutationResolver) CreateBlarf(ctx context.Context, input ent.CreateBlarfInput) (*ent.Blarf, error) {
+	return r.client.Blarf.Create().SetInput(input).Save(ctx)
+}
+
+// UpdateBlarf is the resolver for the updateBlarf field.
+func (r *mutationResolver) UpdateBlarf(ctx context.Context, input ent.UpdateBlarfInput) (*ent.Blarf, error) {
+	return r.client.Blarf.UpdateOneID(id).SetInput(input).Save(ctx)
+}
+
+// DeleteBlarf is the resolver for the deleteBlarf field.
+func (r *mutationResolver) DeleteBlarf(ctx context.Context, id int) (*bool, error) {
+	err := r.client.Blarf.DeleteOneID(id).Exec(ctx)
+    // returns true if there are no errors
+	return err == nil, err
+}`
 
 func shouldHandleMessage(message *protogen.Message) bool {
 	messageOptions := getMessageOptions(message)
 	return messageOptions.Gen
 }
 
-func createFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
-	fileName := getMessageFileName(file, message)
-	importPath := getMessageFileImportPath(file)
-	g := gen.NewGeneratedFile(fileName, importPath)
+func createSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
+	fileName := getSchemaFileName(file, message)
+	g := gen.NewGeneratedFile(fileName, ".")
 	return g
 }
 
-func getMessageFileName(file *protogen.File, message *protogen.Message) string {
-	messageName := getMessageGoName(message)
-	return fmt.Sprintf("example/ent/ent/schema/%s_%s_ent.pb.go", file.GeneratedFilenamePrefix, strcase.ToSnake(messageName))
+func createGraphqlFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
+	fileName := getAppFileName(fmt.Sprintf("%s.graphql", strings.ToLower(getMessageProtoName(message))))
+	g := gen.NewGeneratedFile(fileName, ".")
+	return g
 }
 
-func getMessageFileImportPath(file *protogen.File) protogen.GoImportPath {
-	return ""
+func createResolversFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
+	fileName := getAppFileName(fmt.Sprintf("%s.resolvers.go", strings.ToLower(getMessageProtoName(message))))
+	g := gen.NewGeneratedFile(fileName, ".")
+	return g
+}
+
+func getSchemaFileName(file *protogen.File, message *protogen.Message) string {
+	suffix := fmt.Sprintf("%s.pb.ent.go", file.GeneratedFilenamePrefix)
+	if *config.GenerateApp {
+		return getAppFileName(getEntDirectory(), "schema", suffix)
+
+	}
+	return fmt.Sprintf("schema/%s", suffix)
+}
+
+func getGraphqlFileName() {
+
 }
 
 func getMessageGoName(message *protogen.Message) string {
@@ -54,7 +120,7 @@ func getMessageProtoName(message *protogen.Message) string {
 	return string(message.Desc.Name())
 }
 
-func writeFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *protogen.Message) {
+func writeSchemaFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *protogen.Message) {
 	packageName := getMessageFilePackageName(file)
 	g.P("// Code generated by protoc-gen-go-ent. DO NOT EDIT.")
 	g.P()
@@ -66,7 +132,7 @@ func getMessageFilePackageName(file *protogen.File) string {
 	return "schema"
 }
 
-func writeImports(g *protogen.GeneratedFile, message *protogen.Message) {
+func writeSchemaFileImports(g *protogen.GeneratedFile, message *protogen.Message) {
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent"})
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/contrib/entgql"})
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema"})
@@ -76,7 +142,7 @@ func writeImports(g *protogen.GeneratedFile, message *protogen.Message) {
 	}
 }
 
-func writeStruct(g *protogen.GeneratedFile, message *protogen.Message) {
+func writeSchemaFileStruct(g *protogen.GeneratedFile, message *protogen.Message) {
 	structName := getMessageStructName(message)
 	g.P(fmt.Sprintf("type %s struct {", structName))
 	g.P("  ent.Schema")

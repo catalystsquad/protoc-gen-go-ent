@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func WriteFields(g *protogen.GeneratedFile, message *protogen.Message) {
+func WriteSchemaFileFields(g *protogen.GeneratedFile, message *protogen.Message) {
 	messageGoName := getMessageGoName(message)
 	g.P(fmt.Sprintf("func (%s) Fields() []ent.Field {", messageGoName))
 	fields := getStructFields(message)
