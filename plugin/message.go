@@ -15,6 +15,7 @@ func HandleProtoMessage(gen *protogen.Plugin, file *protogen.File, message *prot
 		writeImports(g, message)
 		writeStruct(g, message)
 		WriteFields(g, message)
+		WriteAnnotations(g, message)
 		err := WriteEdges(g, message)
 		if err != nil {
 			return err
@@ -38,11 +39,11 @@ func createFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Mes
 
 func getMessageFileName(file *protogen.File, message *protogen.Message) string {
 	messageName := getMessageGoName(message)
-	return fmt.Sprintf("%s_%s_ent.pb.go", file.GeneratedFilenamePrefix, strcase.ToSnake(messageName))
+	return fmt.Sprintf("example/ent/ent/schema/%s_%s_ent.pb.go", file.GeneratedFilenamePrefix, strcase.ToSnake(messageName))
 }
 
 func getMessageFileImportPath(file *protogen.File) protogen.GoImportPath {
-	return file.GoImportPath
+	return ""
 }
 
 func getMessageGoName(message *protogen.Message) string {
@@ -62,11 +63,13 @@ func writeFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *pr
 }
 
 func getMessageFilePackageName(file *protogen.File) string {
-	return string(file.GoPackageName)
+	return "schema"
 }
 
 func writeImports(g *protogen.GeneratedFile, message *protogen.Message) {
 	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/contrib/entgql"})
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema"})
 	messageOptions := getMessageOptions(message)
 	for _, additonalImport := range messageOptions.AdditionalImports {
 		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: protogen.GoImportPath(additonalImport)})

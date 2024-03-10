@@ -1,6 +1,6 @@
 version: v1
 plugins:
   - name: go-ent
-    out: example
+    out: .
     opt:
       - paths=source_relative

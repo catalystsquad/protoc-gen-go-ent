@@ -15,12 +15,13 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 	protogen.Options{ParamFunc: flag.CommandLine.Set}.Run(func(gen *protogen.Plugin) error {
+		glog.Infof("*****************************************************************")
 		for _, f := range gen.Files {
 			if !f.Generate {
-				glog.Infof("skipping file: %s", f.Desc.FullName())
+				glog.Infof("main() skipping file: %s", f.Desc.FullName())
 				continue
 			}
-			glog.Infof("handling file: %s", f.Desc.FullName())
+			glog.Infof("main() handling file: %s", f.Desc.FullName())
 			err := plugin.HandleProtoFile(gen, f)
 			if err != nil {
 				return err

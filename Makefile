@@ -11,17 +11,15 @@ build-debug-request:
 build-options:
 	buf generate --template proto/options/buf.gen.yaml --path proto/options
 build-example:
-	go install github.com/lyft/protoc-gen-star/protoc-gen-debug
 	go install
-	buf generate --template example/example/buf.gen.yaml --path example/example
+	buf generate --template example/buf.gen.yaml
 clean:
 	rm -f example/cockroachdb/*.go
 	rm -f example/postgres/*.go
 	rm -f options/*.go
-	rm -rf ent/ent
+	rm -rf example/ent
 generate-ent:
-	cp example/example/**.go ent/ent/schema
-	cd ent && go generate
+	cd example/ent && go generate
 generate: clean build-options build-example
 test: generate
 	go test -v ./test

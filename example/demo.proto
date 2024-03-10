@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package example;
+
+option go_package = "protoc-gen-go-ent/example";
+
+import "options/ent.proto";
+
+message Demo {
+  option (ent.opts) = {gen: true};
+  string name = 1;
+}
