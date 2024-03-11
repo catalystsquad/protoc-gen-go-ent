@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
+	"github.com/golang/glog"
+	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -83,6 +85,7 @@ func shouldHandleMessage(message *protogen.Message) bool {
 
 func createSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
 	fileName := getSchemaFileName(file, message)
+	glog.Infof("writing schema file: %s", fileName)
 	g := gen.NewGeneratedFile(fileName, ".")
 	return g
 }
@@ -100,7 +103,7 @@ func createResolversFile(gen *protogen.Plugin, file *protogen.File, message *pro
 }
 
 func getSchemaFileName(file *protogen.File, message *protogen.Message) string {
-	suffix := fmt.Sprintf("%s.pb.ent.go", file.GeneratedFilenamePrefix)
+	suffix := fmt.Sprintf("%s.pb.ent.go", strings.ToLower(strcase.ToSnake(getMessageProtoName(message))))
 	if *config.GenerateApp {
 		return getAppFileName(getEntDirectory(), "schema", suffix)
 

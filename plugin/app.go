@@ -107,7 +107,7 @@ func writeEntResolvers(gen *protogen.Plugin) {
 			glog.Infof("writeEntResolvers handling message %s", getMessageProtoName(m))
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
-				definition := fmt.Sprintf("func (r *queryResolver) %s(ctx context.Context) ([]*ent.%s, error) {return r.client.%s.Query().All(ctx)}", messageProtoName+"s", messageProtoName, messageProtoName)
+				definition := fmt.Sprintf("func (r *queryResolver) %ss(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.TodoOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy))}", messageProtoName, messageProtoName, messageProtoName, messageProtoName)
 				glog.Infof(definition)
 				g.P(definition)
 			} else {

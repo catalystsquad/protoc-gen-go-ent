@@ -54,6 +54,7 @@ func writeField(g *protogen.GeneratedFile, field *protogen.Field) {
 	writeStorageKey(builder, field)
 	writeStructTag(builder, field)
 	writeEnum(builder, field)
+	writeAnnotations(builder, field)
 	builder.WriteString(",")
 	g.P(builder.String())
 }
@@ -185,6 +186,16 @@ func writeEnum(builder *strings.Builder, field *protogen.Field) {
 		builder.WriteString(strings.Join(values, ","))
 		builder.WriteString(")")
 	}
+}
+
+func writeAnnotations(builder *strings.Builder, field *protogen.Field) {
+	builder.WriteString(".Annotations(")
+	builder.WriteString(fmt.Sprintf("%s,", getOrderFieldDefinition(getOrderFieldName(field))))
+	builder.WriteString(")")
+}
+
+func getOrderFieldName(field *protogen.Field) string {
+	return strings.ToUpper(strcase.ToSnake(getFieldProtoName(field)))
 }
 
 func fieldIsEnum(field *protogen.Field) bool {

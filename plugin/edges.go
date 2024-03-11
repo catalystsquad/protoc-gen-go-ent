@@ -92,6 +92,10 @@ func writeEdge(g *protogen.GeneratedFile, edge *protogen.Field) error {
 	writeEdgeStorageKey(builder, edge)
 	writeEdgeStructTags(builder, edge)
 	writeEdgeComment(builder, edge)
+	err = writeEdgeAnnotations(builder, edge)
+	if err != nil {
+		return err
+	}
 	g.P(builder.String(), ",")
 	return nil
 }
@@ -107,15 +111,22 @@ func writeEdgeBase(builder *strings.Builder, edge *protogen.Field) {
 }
 
 func writeEdgeUnique(builder *strings.Builder, edge *protogen.Field) error {
-	cardinality, err := getEdgeCardinality(edge)
+	isUnique, err := edgeIsUnique(edge)
 	if err != nil {
 		return err
 	}
-	if cardinality == OneToOne || cardinality == ManyToOne {
+	if isUnique {
 		builder.WriteString(".Unique()")
 	}
-
 	return nil
+}
+
+func edgeIsUnique(edge *protogen.Field) (bool, error) {
+	cardinality, err := getEdgeCardinality(edge)
+	if err != nil {
+		return false, err
+	}
+	return cardinality == OneToOne || cardinality == ManyToOne, nil
 }
 
 func writeEdgeRequired(builder *strings.Builder, edge *protogen.Field) {
@@ -157,6 +168,37 @@ func writeEdgeComment(builder *strings.Builder, edge *protogen.Field) {
 		builder.WriteString(options.Comment)
 		builder.WriteString("\")")
 	}
+}
+
+func writeEdgeAnnotations(builder *strings.Builder, edge *protogen.Field) error {
+	isUnique, err := edgeIsUnique(edge)
+	if err != nil {
+		return err
+	}
+	builder.WriteString(".Annotations(")
+	if !isUnique {
+		builder.WriteString("entgql.RelayConnection(),")
+		// non unique edges can be ordered by their count of the other field
+		orderFieldName := fmt.Sprintf("%s_COUNT", getOrderFieldName(edge))
+		builder.WriteString(fmt.Sprintf("%s,", getOrderFieldDefinition(orderFieldName)))
+	} else {
+		// unique edges can be ordered by child fields
+		fieldMessage := getFieldMessage(edge)
+		orderFieldPrefix := getOrderFieldName(edge)
+		for _, field := range fieldMessage.Fields {
+			if !fieldTypeIsMessage(field) {
+				orderFieldName := fmt.Sprintf("%s_%s", orderFieldPrefix, getOrderFieldName(field))
+				builder.WriteString(fmt.Sprintf("%s,", getOrderFieldDefinition(orderFieldName)))
+			}
+		}
+	}
+	builder.WriteString(")")
+
+	return nil
+}
+
+func getOrderFieldDefinition(orderName string) string {
+	return fmt.Sprintf("entgql.OrderField(\"%s\")", orderName)
 }
 
 func writeStorageKeyTable(builder *strings.Builder, edge *protogen.Field) {
