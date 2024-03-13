@@ -39,7 +39,7 @@ message EntEdgeOptions {
   bool required = 3;
   bool immutable = 4;
   EdgeStorageKey storage_key = 5;
-  string structTag = 6;
+  string struct_tag = 6;
   string comment = 7;
   string ref = 9;
 }

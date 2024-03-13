@@ -1,0 +1,18 @@
+model:
+  package: client
+  filename: ./models_gen.go # https://github.com/99designs/gqlgen/tree/master/plugin/modelgen
+client:
+  package: client
+  filename: ./client.go # Where should any generated client go?
+models:
+  Int:
+    model: github.com/99designs/gqlgen/graphql.Int64
+  Date:
+    model: github.com/99designs/gqlgen/graphql.Time
+endpoint:
+  url: http://localhost:8085/graphql
+query:
+  - "./query/*.graphql" # Where are all the query files located?
+generate:
+  clientV2: true # Generate a Client that provides a new signature
+  clientInterfaceName: "GithubGraphQLClient" # Determine the name of the generated client interface

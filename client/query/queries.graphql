@@ -1,0 +1,40 @@
+mutation CreateDemo($name: String!,$numAttendees: Int!,$bravo: String!,$alpha: String!){
+  createDemo(input:{name: $name,numAttendees: $numAttendees,bravo: $bravo,alpha: $alpha})
+  {name numAttendees bravo alpha}
+}
+mutation UpdateDemo($id:ID!, $name: String!,$numAttendees: Int!,$bravo: String!,$alpha: String!){
+  updateDemo(id: $id, input:{name: $name,numAttendees: $numAttendees,bravo: $bravo,alpha: $alpha})
+  {name numAttendees bravo alpha}
+}
+mutation DeleteDemo($id: ID!) {
+  deleteDemo(id: $id)
+}
+query Demos($after: Cursor, $first:Int, $before:Cursor,$last:Int,$orderBy:[DemoOrder!],$where:DemoWhereInput) {
+  demos(after:$after,first:$first, before:$before,last:$last,orderBy:$orderBy,where:$where) {
+    edges {
+      node {
+        name numAttendees bravo alpha
+      }
+    }
+  }
+}
+mutation CreateResult($name: String!){
+  createResult(input:{name: $name})
+  {name}
+}
+mutation UpdateResult($id:ID!, $name: String!){
+  updateResult(id: $id, input:{name: $name})
+  {name}
+}
+mutation DeleteResult($id: ID!) {
+  deleteResult(id: $id)
+}
+query Results($after: Cursor, $first:Int, $before:Cursor,$last:Int,$orderBy:[ResultOrder!],$where:ResultWhereInput) {
+  results(after:$after,first:$first, before:$before,last:$last,orderBy:$orderBy,where:$where) {
+    edges {
+      node {
+        name
+      }
+    }
+  }
+}

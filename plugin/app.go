@@ -107,7 +107,7 @@ func writeEntResolvers(gen *protogen.Plugin) {
 			glog.Infof("writeEntResolvers handling message %s", getMessageProtoName(m))
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
-				definition := fmt.Sprintf("func (r *queryResolver) %ss(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.TodoOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy))}", messageProtoName, messageProtoName, messageProtoName, messageProtoName)
+				definition := fmt.Sprintf("func (r *queryResolver) %ss(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.TodoOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy), ent.With%sFilter(where.Filter))}", messageProtoName, messageProtoName, messageProtoName, messageProtoName, messageProtoName)
 				glog.Infof(definition)
 				g.P(definition)
 			} else {
@@ -201,9 +201,9 @@ import (
 	"context"
 	"app"
 	"app/ent"
-	"app/ent/migrate"
 	"log"
 	"net/http"
+	"entgo.io/contrib/entgql"
 
 	"entgo.io/ent/dialect"
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -220,19 +220,19 @@ func main() {
 	}
 	if err := client.Schema.Create(
 		context.Background(),
-		migrate.WithGlobalUniqueID(true),
 	); err != nil {
 		log.Fatal("opening ent client", err)
 	}
 
-	// Configure the server and start listening on :8081.
+	// Configure the server and start listening on :8085.
 	srv := handler.NewDefaultServer(app.NewSchema(client))
+    srv.Use(entgql.Transactioner{TxOpener: client})
 	http.Handle("/",
-		playground.Handler("Todo", "/query"),
+		playground.Handler("Todo", "/graphql"),
 	)
-	http.Handle("/query", srv)
-	log.Println("listening on :8081")
-	if err := http.ListenAndServe(":8081", nil); err != nil {
+	http.Handle("/graphql", srv)
+	log.Println("listening on :8085")
+	if err := http.ListenAndServe(":8085", nil); err != nil {
 		log.Fatal("http server terminated", err)
 	}
 }
@@ -271,7 +271,7 @@ models:
   # Defines the ID field as Go 'int'.
   ID:
     model:
-      - github.com/99designs/gqlgen/graphql.IntID
+      - github.com/99designs/gqlgen/graphql.UUID
   Node:
     model:
       - app/ent.Noder
@@ -292,11 +292,10 @@ import (
 
 func main() {
     ex, err := entgql.NewExtension(
-        // Tell Ent to generate a GraphQL schema for
-        // the Ent schema in a file named ent.graphql.
+		entgql.WithWhereInputs(true),
+		entgql.WithConfigPath("gqlgen.yml"),
         entgql.WithSchemaGenerator(),
         entgql.WithSchemaPath("ent.graphql"),
-		entgql.WithConfigPath("gqlgen.yml"),
     )
     if err != nil {
         log.Fatalf("creating entgql extension: %v", err)

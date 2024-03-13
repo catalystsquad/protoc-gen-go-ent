@@ -3,6 +3,7 @@ package plugin
 import (
 	"fmt"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
+	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -41,31 +42,47 @@ func getStructFields(message *protogen.Message) []*protogen.Field {
 }
 
 func writeField(g *protogen.GeneratedFile, field *protogen.Field) {
-	builder := &strings.Builder{}
-	builder.WriteString("field.")
-	writeFieldType(builder, field)
-	writeNillable(builder, field)
-	writeOptional(builder, field)
-	writeDefault(builder, field)
-	writeDefaultFunc(builder, field)
-	writeFieldUnique(builder, field)
-	writeImmutable(builder, field)
-	writeComment(builder, field)
-	writeStorageKey(builder, field)
-	writeStructTag(builder, field)
-	writeEnum(builder, field)
-	writeAnnotations(builder, field)
-	builder.WriteString(",")
-	g.P(builder.String())
+	if isIdField(field) {
+		writeIdField(g)
+	} else {
+		builder := &strings.Builder{}
+		builder.WriteString("field.")
+		writeFieldType(builder, field)
+		writeNillable(builder, field)
+		writeOptional(builder, field)
+		writeDefault(builder, field)
+		writeDefaultFunc(builder, field)
+		writeFieldUnique(builder, field)
+		writeImmutable(builder, field)
+		writeComment(builder, field)
+		writeStorageKey(builder, field)
+		writeStructTag(builder, field)
+		writeEnum(builder, field)
+		writeAnnotations(builder, field)
+		builder.WriteString(",")
+		g.P(builder.String())
+	}
+}
+
+func writeIdField(g *protogen.GeneratedFile) {
+	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/google/uuid"})
+	g.P("field.UUID(\"id\", uuid.UUID{}).Default(uuid.New),")
 }
 
 func writeFieldType(builder *strings.Builder, field *protogen.Field) {
+	if isIdField(field) {
+
+	}
 	entType := getFieldEntType(field)
 	fieldName := getFieldName(field)
 	builder.WriteString(entType)
 	builder.WriteString("(\"")
 	builder.WriteString(fieldName)
 	builder.WriteString("\")")
+}
+
+func isIdField(field *protogen.Field) bool {
+	return getFieldProtoName(field) == "id"
 }
 
 func getFieldEntType(field *protogen.Field) string {
@@ -95,6 +112,10 @@ func getFieldMessageType(field *protogen.Field) string {
 
 func getFieldName(field *protogen.Field) string {
 	return strcase.ToSnake(getFieldGoName(field))
+}
+
+func getGraphqlFieldName(field *protogen.Field) string {
+	return strcase.ToLowerCamel(getFieldProtoName(field))
 }
 
 func writeNillable(builder *strings.Builder, field *protogen.Field) {
@@ -162,8 +183,11 @@ func writeStorageKey(builder *strings.Builder, field *protogen.Field) {
 }
 
 func writeStructTag(builder *strings.Builder, field *protogen.Field) {
+	glog.Infof("writeStructTag(): field: %s", getFieldProtoName(field))
 	options := getFieldOptions(field)
 	if options.StructTag != "" {
+		glog.Infof("writing struct tag")
+		glog.Infof(options.StructTag)
 		builder.WriteString(".StructTag(")
 		builder.WriteString(options.StructTag)
 		builder.WriteString(")")
