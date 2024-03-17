@@ -316,6 +316,24 @@ query:
 generate:
   clientV2: true # Generate a Client that provides a new signature
   clientInterfaceName: "GraphQLClient" # Determine the name of the generated client interface
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+# This section declares type mapping between the GraphQL and Go type systems.
+models:
+  # Defines the ID field as Go 'int'.
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Uint32:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint32
+  Uint64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint64
+  
+  Float:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float
 `
 
 var entcContent = `

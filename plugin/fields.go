@@ -232,12 +232,6 @@ func writeStructTag(builder *strings.Builder, field *protogen.Field) {
 func writeEnum(builder *strings.Builder, field *protogen.Field) {
 	if fieldIsEnum(field) {
 		values := getFieldEnumValues(field)
-		options := getFieldOptions(field)
-		if !options.IncludeUnspecifiedEnum {
-			values = lo.Filter(values, func(item string, index int) bool {
-				return !enumValueIsUnspecified(item)
-			})
-		}
 		values = lo.Map(values, func(item string, index int) string {
 			return fmt.Sprintf("\"%s\"", item)
 		})
@@ -283,6 +277,11 @@ func getFieldEnumValues(field *protogen.Field) []string {
 	for _, enumValue := range field.Enum.Values {
 		value := getEnumValue(enumValue)
 		values = append(values, value)
+	}
+	if !getFieldOptions(field).IncludeUnspecifiedEnum {
+		values = lo.Filter(values, func(item string, index int) bool {
+			return !enumValueIsUnspecified(item)
+		})
 	}
 	return values
 }
