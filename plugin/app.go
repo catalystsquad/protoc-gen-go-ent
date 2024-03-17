@@ -308,9 +308,9 @@ models:
 
 var gqlgencContent = `
 model:
-  filename: models_gen.go # https://github.com/99designs/gqlgen/tree/master/plugin/modelgen
+  filename: client/models_gen.go # https://github.com/99designs/gqlgen/tree/master/plugin/modelgen
 client:
-  filename: client.go # Where should any generated client go?
+  filename: client/client.go # Where should any generated client go?
 query:
   - "queries.graphql" # Where are all the query files located?
 generate:

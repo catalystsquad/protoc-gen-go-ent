@@ -12,7 +12,8 @@ var testFile *protogen.GeneratedFile
 
 func initTestFile(gen *protogen.Plugin) {
 	if testFile == nil {
-		testFile = gen.NewGeneratedFile("test/graphql_test.go", "")
+		fileName := getAppFileName("test/graphql_test.go")
+		testFile = gen.NewGeneratedFile(fileName, "")
 		testFile.P(testHeader)
 	}
 }
@@ -30,14 +31,14 @@ func generateTests(gen *protogen.Plugin, message *protogen.Message) error {
 func generateCreateTest(message *protogen.Message) error {
 	objectName := getCreateObjectName(message)
 	testFile.P("func Test", objectName, "(t *testing.T) {")
-	testFile.P(indent, "fake := ", objectName, "{", objectName, ": ", objectName, "_", objectName, "{}}")
+	testFile.P(indent, "fake := client.", objectName, "{", objectName, ": client.", objectName, "_", objectName, "{}}")
 	err := writeFieldFakeData(message)
 	if err != nil {
 		return err
 	}
 	testFile.P("ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)")
 	testFile.P("defer cancel()")
-	testFile.P("response, err := client.", objectName, "(ctx, ", getCreateArgs(message), ")")
+	testFile.P("response, err := gqlClient.", objectName, "(ctx, ", getCreateArgs(message), ")")
 	testFile.P("require.NoError(t, err)")
 	writeFieldAssertions(message)
 	testFile.P("}")
@@ -132,11 +133,13 @@ package test
 
 import (
 	"context"
-	"github.com/brianvoe/gofakeit/v7"
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+	"app/client"
+	"time"
 )
 
-var client = NewClient(http.DefaultClient, "http://localhost:8085/graphql", nil)
+var gqlClient = client.NewClient(http.DefaultClient, "http://localhost:8085/graphql", nil)
 `
