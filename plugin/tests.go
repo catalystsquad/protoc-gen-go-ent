@@ -30,7 +30,7 @@ func generateTests(gen *protogen.Plugin, message *protogen.Message) error {
 func generateCreateTest(message *protogen.Message) error {
 	objectName := getCreateObjectName(message)
 	testFile.P("func Test", objectName, "(t *testing.T) {")
-	testFile.P(indent, "fake := gqlclient.", objectName, "{", objectName, ": gqlclient.", objectName, "_", objectName, "{}}")
+	testFile.P(indent, "fake := ", objectName, "{", objectName, ": ", objectName, "_", objectName, "{}}")
 	err := writeFieldFakeData(message)
 	if err != nil {
 		return err
@@ -48,9 +48,11 @@ func generateCreateTest(message *protogen.Message) error {
 func writeFieldFakeData(message *protogen.Message) error {
 	fields := getNonMessageFields(message)
 	for _, field := range fields {
-		err := writeFieldFakeDefinition(field)
-		if err != nil {
-			return err
+		if !isIdField(field) {
+			err := writeFieldFakeDefinition(field)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -60,9 +62,11 @@ func writeFieldFakeData(message *protogen.Message) error {
 func writeFieldAssertions(message *protogen.Message) {
 	fields := getNonMessageFields(message)
 	for _, field := range fields {
-		objectName := getCreateObjectName(getFieldParentMessage(field))
-		fieldGoName := getFieldGoName(field)
-		testFile.P("require.Equal(t, fake.", objectName, ".", fieldGoName, ", response.", objectName, ".", fieldGoName, ")")
+		if !isIdField(field) {
+			objectName := getCreateObjectName(getFieldParentMessage(field))
+			fieldGoName := getFieldGoName(field)
+			testFile.P("require.Equal(t, fake.", objectName, ".", fieldGoName, ", response.", objectName, ".", fieldGoName, ")")
+		}
 	}
 }
 
@@ -114,8 +118,10 @@ func getCreateArgs(message *protogen.Message) string {
 	args := []string{}
 	objectName := getCreateObjectName(message)
 	for _, field := range fields {
-		fieldGoName := getFieldGoName(field)
-		args = append(args, fmt.Sprintf("fake.%s.%s", objectName, fieldGoName))
+		if !isIdField(field) {
+			fieldGoName := getFieldGoName(field)
+			args = append(args, fmt.Sprintf("fake.%s.%s", objectName, fieldGoName))
+		}
 	}
 
 	return strings.Join(args, ",")
@@ -132,5 +138,5 @@ import (
 	"testing"
 )
 
-var client = gqlclient.NewClient(http.DefaultClient, "http://localhost:8085/graphql", nil)
+var client = NewClient(http.DefaultClient, "http://localhost:8085/graphql", nil)
 `
