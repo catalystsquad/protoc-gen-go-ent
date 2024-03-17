@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package example;
+
+option go_package = "protoc-gen-go-ent/example";
+
+import "options/ent.proto";
+
+enum Origin {
+  ORIGIN_UNSPECIFIED = 0;
+  ORIGIN_LOCAL = 1;
+  ORIGIN_FOREIGN = 2;
+}
+
+message Dummy {
+  option (ent.opts) = {gen: true};
+  string id = 1;
+  string aString = 2;
+//  repeated string someStrings = 18;
+//  bool aBool = 3;
+//  int32 anInt32 = 4;
+//  repeated int32 someInt32s = 19;
+//  sint32 anSInt32 = 5;
+//  repeated sint32 someSInt32s = 20;
+//  uint32 aUint32 = 6;
+//  repeated uint32 someUint32s = 21;
+//  sfixed32 anSFixed32 = 7;
+//  repeated sfixed32 someSFixed32s = 22;
+//  fixed32 aFixed32 = 8;
+//  repeated fixed32 someFixed32s = 23;
+//  int64 anInt64 = 9;
+//  repeated int64 someInt64s = 24;
+//  sint64 aSInt64 = 10;
+//  repeated sint64 someSInt64s = 25;
+//  uint64 aUint64 = 11;
+//  repeated uint64 someUint64s = 26;
+//  sfixed64 anSFixed64 = 12;
+//  repeated sfixed64 someSFixed64s = 27;
+//  fixed64 aFixed64 = 13;
+//  repeated fixed64 someFixed64s = 28;
+//  float aFloat = 14;
+//  repeated float someFloats = 29;
+//  double aDouble = 15;
+//  repeated double someDoubles = 30;
+//  optional string anOptionalString = 16;
+//  Origin origin = 17;
+}
+
+// a message that exercises field options
+//message DummyWithOptions {
+//  option (ent.opts) = {gen: true, additionalImports: ["time"]};
+//  string id = 1;
+//  string nillableString = 2 [(ent.field).nillable = true];
+//  string defaultString = 3 [(ent.field).default = "\"weh\""];
+//  string defaultStringFunc = 4 [(ent.field).defaultFunc = "time.Now().String"];
+//  string ignoredField = 5 [(ent.field).ignore = true];
+//  string uniqueField = 6 [(ent.field).unique = true];
+//  string createdAt = 7 [(ent.field).immutable = true];
+//  string commented = 8 [(ent.field).comment = "a neat comment"];
+//  string storageKey = 9 [(ent.field).storage_key = "some_column_name"];
+//  string struct_tag = 10 [(ent.field).struct_tag = "`json:\"omitempty\"`"];
+//  Origin origin = 11 [(ent.field).includeUnspecifiedEnum = true]; // an enum that should include the _UNSPECIFIED value, which is false by default
+//}

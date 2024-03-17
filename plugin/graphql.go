@@ -17,7 +17,8 @@ const indent = "  "
 // to generate clients. The queryFile var is used when handling messages to generate queries for them
 func initQueryFile(gen *protogen.Plugin) {
 	if queryFile == nil {
-		queryFile = gen.NewGeneratedFile("queries.graphql", "")
+		fileName := getAppFileName("queries.graphql")
+		queryFile = gen.NewGeneratedFile(fileName, "")
 	}
 }
 
@@ -50,7 +51,7 @@ func generateCreateMutation(message *protogen.Message) error {
 	}
 	queryFile.P("mutation Create", name, varsDefinition, "{")
 	queryFile.P(indent, "create", name, "(input:", getCreateMutationInput(message), ")")
-	queryFile.P(indent, "{", getGraphqlFieldNamesString(message, false), "}")
+	queryFile.P(indent, "{", getGraphqlFieldNamesString(message, true, false), "}")
 	queryFile.P("}")
 	return nil
 }
@@ -63,7 +64,7 @@ func generateUpdateMutation(message *protogen.Message) error {
 	}
 	queryFile.P("mutation Update", name, varsDefinition, "{")
 	queryFile.P(indent, "update", name, "(id: $id, input:", getUpdateMutationInput(message), ")")
-	queryFile.P(indent, "{", getGraphqlFieldNamesString(message, false), "}")
+	queryFile.P(indent, "{", getGraphqlFieldNamesString(message, true, false), "}")
 	queryFile.P("}")
 	return nil
 }
@@ -78,13 +79,12 @@ func generateDeleteMutation(message *protogen.Message) error {
 
 func generateQueries(message *protogen.Message) {
 	if len(getNonMessageFields(message)) > 0 {
-		name := getMessageProtoName(message)
-		pluralName := name + "s"
-		queryFile.P("query ", pluralName, "(", getQueryVars(message), ") {")
-		queryFile.P(indent, strings.ToLower(strcase.ToLowerCamel(pluralName)), "(", getQueryArgs(), ") {")
+		name := getPluralMessageProtoName(message)
+		queryFile.P("query ", name, "(", getQueryVars(message), ") {")
+		queryFile.P(indent, strings.ToLower(strcase.ToLowerCamel(name)), "(", getQueryArgs(), ") {")
 		queryFile.P(indent, indent, "edges {")
 		queryFile.P(indent, indent, indent, "node {")
-		queryFile.P(indent, indent, indent, indent, getGraphqlFieldNamesString(message, false))
+		queryFile.P(indent, indent, indent, indent, getGraphqlFieldNamesString(message, false, false))
 		queryFile.P(indent, indent, indent, "}")
 		queryFile.P(indent, indent, "}")
 		queryFile.P(indent, "}")
@@ -103,7 +103,7 @@ func getQueryArgs() string {
 
 func getCreateMutationVarsDefinition(message *protogen.Message) (string, error) {
 	builder := strings.Builder{}
-	fields := getMutationFields(message)
+	fields := getMutationFields(false, message)
 	fieldVarDefinitions := []string{}
 	builder.WriteString("(")
 	for _, field := range fields {
@@ -121,7 +121,7 @@ func getCreateMutationVarsDefinition(message *protogen.Message) (string, error) 
 
 func getUpdateMutationVarsDefinition(message *protogen.Message) (string, error) {
 	builder := strings.Builder{}
-	fields := getMutationFields(message)
+	fields := getMutationFields(false, message)
 	fieldVarDefinitions := []string{}
 	builder.WriteString("($id:ID!, ")
 	for _, field := range fields {
@@ -139,7 +139,7 @@ func getUpdateMutationVarsDefinition(message *protogen.Message) (string, error) 
 
 func getQueryMutationVarsDefinition(message *protogen.Message) (string, error) {
 	builder := strings.Builder{}
-	fields := getMutationFields(message)
+	fields := getMutationFields(true, message)
 	fieldVarDefinitions := []string{}
 	builder.WriteString("(")
 	for _, field := range fields {
@@ -156,7 +156,7 @@ func getQueryMutationVarsDefinition(message *protogen.Message) (string, error) {
 }
 
 func getFieldVarDefinition(field *protogen.Field) (string, error) {
-	varName := strcase.ToLowerCamel(getFieldProtoName(field))
+	varName := getGraphqlFieldName(field)
 	graphqlType, err := getGraphqlType(field)
 	if err != nil {
 		return "", err
@@ -169,17 +169,23 @@ func getGraphqlType(field *protogen.Field) (string, error) {
 
 	if fieldTypeIsMessage(field) {
 		graphqlType = getFieldMessageType(field)
+	} else if fieldTypeIsEnum(field) {
+		graphqlType = getFieldEnumType(field)
 	} else {
 		kind := field.Desc.Kind()
 		var ok bool
-		graphqlType, ok = protoToGraphqlTypes[kind]
+		if fieldIsRepeated(field) {
+			graphqlType, ok = repeatedProtoToGraphqlTypes[kind]
+		} else {
+			graphqlType, ok = protoToGraphqlTypes[kind]
+		}
 		if !ok {
 			return "", errors.New(fmt.Sprintf("unknown graphql type for proto type %s", kind))
 		}
 	}
 
 	if fieldIsRepeated(field) {
-		graphqlType = fmt.Sprintf("[%s]", graphqlType)
+		graphqlType = fmt.Sprintf("[%s!]", graphqlType)
 	}
 	if !fieldIsOptional(field) {
 		graphqlType = fmt.Sprintf("%s!", graphqlType)
@@ -189,7 +195,7 @@ func getGraphqlType(field *protogen.Field) (string, error) {
 }
 
 func getCreateMutationInput(message *protogen.Message) string {
-	fields := getMutationFieldNames(message)
+	fields := getMutationFieldNames(false, message)
 	builder := strings.Builder{}
 	builder.WriteString("{")
 	inputFields := []string{}
@@ -201,7 +207,7 @@ func getCreateMutationInput(message *protogen.Message) string {
 }
 
 func getUpdateMutationInput(message *protogen.Message) string {
-	fields := getMutationFieldNames(message)
+	fields := getMutationFieldNames(false, message)
 	builder := strings.Builder{}
 	builder.WriteString("{")
 	inputFields := []string{}
@@ -212,13 +218,16 @@ func getUpdateMutationInput(message *protogen.Message) string {
 	return fmt.Sprintf("{%s}", strings.Join(inputFields, ","))
 }
 
-func getGraphqlFieldNamesString(message *protogen.Message, includeMessages bool) string {
-	return strings.Join(getGraphqlFieldNames(message, includeMessages), " ")
+func getGraphqlFieldNamesString(message *protogen.Message, includeIdField, includeMessages bool) string {
+	return strings.Join(getGraphqlFieldNames(message, includeIdField, includeMessages), " ")
 }
-func getGraphqlFieldNames(message *protogen.Message, includeMessages bool) []string {
+func getGraphqlFieldNames(message *protogen.Message, includeIdField, includeMessages bool) []string {
 	fieldNames := []string{}
 	for _, field := range getNonIgnoredFields(message) {
 		if !includeMessages && fieldTypeIsMessage(field) {
+			continue
+		}
+		if !includeIdField && getFieldProtoName(field) == "id" {
 			continue
 		}
 		graphqlFieldName := getGraphqlFieldName(field)
@@ -228,8 +237,8 @@ func getGraphqlFieldNames(message *protogen.Message, includeMessages bool) []str
 	return fieldNames
 }
 
-func getMutationFieldNames(message *protogen.Message) []string {
-	fields := getMutationFields(message)
+func getMutationFieldNames(includeId bool, message *protogen.Message) []string {
+	fields := getMutationFields(includeId, message)
 	mutationFieldNames := []string{}
 	for _, field := range fields {
 		mutationFieldNames = append(mutationFieldNames, getGraphqlFieldName(field))
@@ -238,10 +247,13 @@ func getMutationFieldNames(message *protogen.Message) []string {
 	return mutationFieldNames
 }
 
-func getMutationFields(message *protogen.Message) []*protogen.Field {
+func getMutationFields(includeId bool, message *protogen.Message) []*protogen.Field {
 	mutationFields := []*protogen.Field{}
 	for _, field := range getNonIgnoredFields(message) {
 		if !fieldTypeIsMessage(field) {
+			if !includeId && getFieldProtoName(field) == "id" {
+				continue
+			}
 			mutationFields = append(mutationFields, field)
 		}
 	}
@@ -252,6 +264,22 @@ func getMutationFields(message *protogen.Message) []*protogen.Field {
 var protoToGraphqlTypes = map[protoreflect.Kind]string{
 	protoreflect.StringKind:   "String",
 	protoreflect.BoolKind:     "Boolean",
+	protoreflect.Int32Kind:    "Int",
+	protoreflect.Sint32Kind:   "Int",
+	protoreflect.Uint32Kind:   "Uint32",
+	protoreflect.Sfixed32Kind: "Int",
+	protoreflect.Fixed32Kind:  "Uint32",
+	protoreflect.Int64Kind:    "Int",
+	protoreflect.Sint64Kind:   "Int",
+	protoreflect.Uint64Kind:   "Uint64",
+	protoreflect.Sfixed64Kind: "Int",
+	protoreflect.Fixed64Kind:  "Uint64",
+	protoreflect.FloatKind:    "Float",
+	protoreflect.DoubleKind:   "Float",
+}
+
+var repeatedProtoToGraphqlTypes = map[protoreflect.Kind]string{
+	protoreflect.StringKind:   "String",
 	protoreflect.Int32Kind:    "Int",
 	protoreflect.Sint32Kind:   "Int",
 	protoreflect.Uint32Kind:   "Int",

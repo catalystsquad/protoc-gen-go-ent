@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
 	"github.com/golang/glog"
@@ -10,10 +11,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"strconv"
 	"strings"
 )
 
-func WriteSchemaFileFields(g *protogen.GeneratedFile, message *protogen.Message) {
+func WriteSchemaFileFields(g *protogen.GeneratedFile, message *protogen.Message) error {
 	messageGoName := getMessageGoName(message)
 	g.P(fmt.Sprintf("func (%s) Fields() []ent.Field {", messageGoName))
 	fields := getStructFields(message)
@@ -23,11 +25,15 @@ func WriteSchemaFileFields(g *protogen.GeneratedFile, message *protogen.Message)
 		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema/field"})
 		g.P("return []ent.Field{")
 		for _, field := range fields {
-			writeField(g, field)
+			err := writeField(g, field)
+			if err != nil {
+				return err
+			}
 		}
 		g.P("}")
 	}
 	g.P(fmt.Sprintf("}"))
+	return nil
 }
 
 func getStructFields(message *protogen.Message) []*protogen.Field {
@@ -41,13 +47,16 @@ func getStructFields(message *protogen.Message) []*protogen.Field {
 	return fields
 }
 
-func writeField(g *protogen.GeneratedFile, field *protogen.Field) {
+func writeField(g *protogen.GeneratedFile, field *protogen.Field) error {
 	if isIdField(field) {
 		writeIdField(g)
 	} else {
 		builder := &strings.Builder{}
 		builder.WriteString("field.")
-		writeFieldType(builder, field)
+		err := writeFieldType(builder, field)
+		if err != nil {
+			return err
+		}
 		writeNillable(builder, field)
 		writeOptional(builder, field)
 		writeDefault(builder, field)
@@ -62,6 +71,7 @@ func writeField(g *protogen.GeneratedFile, field *protogen.Field) {
 		builder.WriteString(",")
 		g.P(builder.String())
 	}
+	return nil
 }
 
 func writeIdField(g *protogen.GeneratedFile) {
@@ -69,25 +79,36 @@ func writeIdField(g *protogen.GeneratedFile) {
 	g.P("field.UUID(\"id\", uuid.UUID{}).Default(uuid.New),")
 }
 
-func writeFieldType(builder *strings.Builder, field *protogen.Field) {
-	if isIdField(field) {
-
+func writeFieldType(builder *strings.Builder, field *protogen.Field) error {
+	entType, err := getFieldEntType(field)
+	if err != nil {
+		return err
 	}
-	entType := getFieldEntType(field)
 	fieldName := getFieldName(field)
 	builder.WriteString(entType)
 	builder.WriteString("(\"")
 	builder.WriteString(fieldName)
 	builder.WriteString("\")")
+	return nil
 }
 
 func isIdField(field *protogen.Field) bool {
 	return getFieldProtoName(field) == "id"
 }
 
-func getFieldEntType(field *protogen.Field) string {
+func getFieldEntType(field *protogen.Field) (entType string, err error) {
 	kind := getFieldKind(field)
-	return protoFieldTypeToEntFieldTypeMap[kind]
+	var ok bool
+	if fieldIsRepeated(field) {
+		entType, ok = repeatedProtoFieldTypeToEntFieldTypeMap[kind]
+	} else {
+		entType, ok = protoFieldTypeToEntFieldTypeMap[kind]
+	}
+	if !ok {
+		err = errors.New(fmt.Sprintf("unsupported type: %s", kind))
+	}
+
+	return
 }
 
 func getFieldKind(field *protogen.Field) protoreflect.Kind {
@@ -110,12 +131,26 @@ func getFieldMessageType(field *protogen.Field) string {
 	return getMessageProtoName(getFieldMessage(field))
 }
 
+func getFieldEnumType(field *protogen.Field) string {
+	return fmt.Sprintf("%s%s", getFieldParentMessageType(field), strcase.ToCamel(getFieldProtoName(field)))
+}
+
 func getFieldName(field *protogen.Field) string {
-	return strcase.ToSnake(getFieldGoName(field))
+	return strcase.ToSnake(getFieldProtoName(field))
 }
 
 func getGraphqlFieldName(field *protogen.Field) string {
-	return strcase.ToLowerCamel(getFieldProtoName(field))
+	graphqlFieldName := strcase.ToLowerCamel(strcase.ToSnake(getFieldProtoName(field)))
+	return graphqlFieldName
+}
+
+func shouldUpperCaseLastCharacterOfFieldName(fieldName string) bool {
+	return charIsNumber(string(fieldName[len(fieldName)-2])) && !charIsNumber(string(fieldName[len(fieldName)-1]))
+}
+
+func charIsNumber(char string) bool {
+	_, err := strconv.Atoi(char)
+	return err == nil
 }
 
 func writeNillable(builder *strings.Builder, field *protogen.Field) {
@@ -213,9 +248,25 @@ func writeEnum(builder *strings.Builder, field *protogen.Field) {
 }
 
 func writeAnnotations(builder *strings.Builder, field *protogen.Field) {
-	builder.WriteString(".Annotations(")
-	builder.WriteString(fmt.Sprintf("%s,", getOrderFieldDefinition(getOrderFieldName(field))))
-	builder.WriteString(")")
+	if fieldIsRepeated(field) {
+		return
+	}
+	annotations := []string{}
+	annotations = append(annotations, getOrderFieldDefinition(getOrderFieldName(field)))
+	graphqlType, ok := protoToGraphqlTypeMap[getFieldKind(field)]
+	if ok {
+		annotations = append(annotations, fmt.Sprintf("entgql.Type(\"%s\")", graphqlType))
+	}
+	builder.WriteString(fmt.Sprintf(".Annotations(%s)", strings.Join(annotations, ",")))
+}
+
+// entgql doesn't support all types out of the box, these types must be paired with their respective gqlgen type
+// which is specified in gqlgen.yml, and the entgql.Type() must be specified, or the code is not generated correctly
+var protoToGraphqlTypeMap = map[protoreflect.Kind]string{
+	protoreflect.Uint32Kind:  "Uint32",
+	protoreflect.Fixed32Kind: "Uint32",
+	protoreflect.Uint64Kind:  "Uint64",
+	protoreflect.Fixed64Kind: "Uint64",
 }
 
 func getOrderFieldName(field *protogen.Field) string {
@@ -258,9 +309,25 @@ var protoFieldTypeToEntFieldTypeMap = map[protoreflect.Kind]string{
 	protoreflect.Uint64Kind:   "Uint64",
 	protoreflect.Sfixed64Kind: "Int64",
 	protoreflect.Fixed64Kind:  "Uint64",
-	protoreflect.FloatKind:    "Float32",
+	protoreflect.FloatKind:    "Float",
 	protoreflect.DoubleKind:   "Float",
 	protoreflect.BytesKind:    "Bytes",
+}
+
+var repeatedProtoFieldTypeToEntFieldTypeMap = map[protoreflect.Kind]string{
+	protoreflect.StringKind:   "Strings",
+	protoreflect.Int32Kind:    "Ints",
+	protoreflect.Sint32Kind:   "Ints",
+	protoreflect.Uint32Kind:   "Ints",
+	protoreflect.Sfixed32Kind: "Ints",
+	protoreflect.Fixed32Kind:  "Ints",
+	protoreflect.Int64Kind:    "Ints",
+	protoreflect.Sint64Kind:   "Ints",
+	protoreflect.Uint64Kind:   "Ints",
+	protoreflect.Sfixed64Kind: "Ints",
+	protoreflect.Fixed64Kind:  "Ints",
+	protoreflect.FloatKind:    "Floats",
+	protoreflect.DoubleKind:   "Floats",
 }
 
 func getFieldOptions(field *protogen.Field) ent.EntFieldOptions {
@@ -300,6 +367,10 @@ func shouldGenerateField(field *protogen.Field) bool {
 
 func fieldTypeIsMessage(field *protogen.Field) bool {
 	return getFieldKind(field) == protoreflect.MessageKind
+}
+
+func fieldTypeIsEnum(field *protogen.Field) bool {
+	return getFieldKind(field) == protoreflect.EnumKind
 }
 
 func fieldTypeIsGroup(field *protogen.Field) bool {

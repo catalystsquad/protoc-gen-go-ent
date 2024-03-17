@@ -78,16 +78,31 @@ func writeFieldFakeDefinition(field *protogen.Field) error {
 }
 
 func getGoFakeItFunctionForFieldBasedOnType(field *protogen.Field) (definition string, err error) {
-	switch getFieldKind(field) {
-	case protoreflect.StringKind:
-		definition = "gofakeit.Name()"
-	case protoreflect.Int64Kind:
-		definition = "int64(gofakeit.Number(0, 1000))"
-	default:
+	definition, ok := protoKindFakeDefinitionMap[getFieldKind(field)]
+	if !ok {
 		err = errors.New(fmt.Sprintf("unable to get gofakeit function for field kind: %s", getFieldKind(field)))
 	}
 
 	return
+}
+
+var protoKindFakeDefinitionMap = map[protoreflect.Kind]string{
+	protoreflect.BoolKind:     "gofakeit.Bool()",
+	protoreflect.EnumKind:     "gofakeit.Bool()",
+	protoreflect.Int32Kind:    "int32(gofakeit.Number(0, 1000))",
+	protoreflect.Sint32Kind:   "int32(gofakeit.Number(0, 1000))",
+	protoreflect.Uint32Kind:   "uint32(gofakeit.Number(0, 1000))",
+	protoreflect.Sfixed32Kind: "int32(gofakeit.Number(0, 1000))",
+	protoreflect.Fixed32Kind:  "uint32(gofakeit.Number(0, 1000))",
+	protoreflect.Sint64Kind:   "int64(gofakeit.Number(0, 1000))",
+	protoreflect.Uint64Kind:   "uint64(gofakeit.Number(0, 1000))",
+	protoreflect.Sfixed64Kind: "int64(gofakeit.Number(0, 1000))",
+	protoreflect.Fixed64Kind:  "uint64(gofakeit.Number(0, 1000))",
+	protoreflect.FloatKind:    "float32(gofakeit.Number(0, 1000))",
+	protoreflect.DoubleKind:   "float64(gofakeit.Number(0, 1000))",
+	protoreflect.BytesKind:    "[]byte(gofakeit.Name())",
+	protoreflect.StringKind:   "gofakeit.Name()",
+	protoreflect.Int64Kind:    "int64(gofakeit.Number(0, 1000))",
 }
 
 func getCreateObjectName(message *protogen.Message) string {

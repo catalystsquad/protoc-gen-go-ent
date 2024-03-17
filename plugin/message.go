@@ -39,9 +39,12 @@ func writeSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protoge
 	writeSchemaFileHeader(g, file, message)
 	writeSchemaFileImports(g, message)
 	writeSchemaFileStruct(g, message)
-	WriteSchemaFileFields(g, message)
+	err := WriteSchemaFileFields(g, message)
+	if err != nil {
+		return err
+	}
 	WriteSchemaFileAnnotations(g, message)
-	err := WriteSchemaFileEdges(g, message)
+	err = WriteSchemaFileEdges(g, message)
 	return err
 }
 
@@ -145,6 +148,10 @@ func getMessageGoName(message *protogen.Message) string {
 
 func getMessageProtoName(message *protogen.Message) string {
 	return string(message.Desc.Name())
+}
+
+func getPluralMessageProtoName(message *protogen.Message) string {
+	return pluralizer.Plural(getMessageProtoName(message))
 }
 
 func writeSchemaFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *protogen.Message) {

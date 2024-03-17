@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/gertd/go-pluralize"
 	"github.com/golang/glog"
 	"google.golang.org/protobuf/compiler/protogen"
 	"strings"
@@ -9,10 +10,13 @@ import (
 
 const appPackageName = "app"
 
+var pluralizer = pluralize.NewClient()
+
 func GenerateApp(gen *protogen.Plugin) error {
 	writeGenerate(gen)
 	writeEntc(gen)
 	writeGqlGen(gen)
+	writeGqlGenC(gen)
 	writeResolver(gen)
 	writeEntResolvers(gen)
 	writeServer(gen)
@@ -69,6 +73,10 @@ func writeGqlGen(gen *protogen.Plugin) {
 			}
 		}
 	}
+	writeGqlGenSchemaConfig(g, gen)
+}
+
+func writeGqlGenSchemaConfig(g *protogen.GeneratedFile, gen *protogen.Plugin) {
 	g.P("schema:")
 	g.P("  - ent.graphql")
 	for _, f := range gen.Files {
@@ -85,6 +93,13 @@ func writeGqlGen(gen *protogen.Plugin) {
 			}
 		}
 	}
+}
+
+func writeGqlGenC(gen *protogen.Plugin) {
+	fileName := getAppFileName("gqlgenc.yml")
+	g := gen.NewGeneratedFile(fileName, "")
+	g.P(gqlgencContent)
+	writeGqlGenSchemaConfig(g, gen)
 }
 
 func writeResolver(gen *protogen.Plugin) {
@@ -107,7 +122,7 @@ func writeEntResolvers(gen *protogen.Plugin) {
 			glog.Infof("writeEntResolvers handling message %s", getMessageProtoName(m))
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
-				definition := fmt.Sprintf("func (r *queryResolver) %ss(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.TodoOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy), ent.With%sFilter(where.Filter))}", messageProtoName, messageProtoName, messageProtoName, messageProtoName, messageProtoName)
+				definition := fmt.Sprintf("func (r *queryResolver) %s(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.%sOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy), ent.With%sFilter(where.Filter))}", getPluralMessageProtoName(m), messageProtoName, messageProtoName, messageProtoName, messageProtoName, messageProtoName)
 				glog.Infof(definition)
 				g.P(definition)
 			} else {
@@ -139,15 +154,16 @@ import (
 	"context"
 	"app/ent"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 // Node is the resolver for the node field.
-func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
+func (r *queryResolver) Node(ctx context.Context, id uuid.UUID) (ent.Noder, error) {
 	return r.client.Noder(ctx, id)
 }
 
 // Nodes is the resolver for the nodes field.
-func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, error) {
+func (r *queryResolver) Nodes(ctx context.Context, ids []uuid.UUID) ([]ent.Noder, error) {
 	return r.client.Noders(ctx, ids)
 }
 
@@ -272,9 +288,33 @@ models:
   ID:
     model:
       - github.com/99designs/gqlgen/graphql.UUID
+  Uint32:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint32
+  Uint64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint64
+  
+  Float:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float
   Node:
     model:
       - app/ent.Noder
+`
+
+var gqlgencContent = `
+model:
+  filename: models_gen.go # https://github.com/99designs/gqlgen/tree/master/plugin/modelgen
+client:
+  filename: client.go # Where should any generated client go?
+endpoint:
+  url: http://localhost:8085/graphql # Where do you want to send your request?
+query:
+  - "queries.graphql" # Where are all the query files located?
+generate:
+  clientV2: true # Generate a Client that provides a new signature
+  clientInterfaceName: "GraphQLClient" # Determine the name of the generated client interface
 `
 
 var entcContent = `
