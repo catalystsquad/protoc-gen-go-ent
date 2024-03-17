@@ -21,7 +21,7 @@ clean:
 generate-ent:
 	cd example/app && go generate
 generate-gql-client:
-	cd example/app/client && gqlgenc
+	cd example/app && gqlgenc
 generate: clean build-options build-example
 test: generate
 	go test -v ./test
