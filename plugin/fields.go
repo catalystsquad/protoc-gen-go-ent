@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
-	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -218,11 +217,8 @@ func writeStorageKey(builder *strings.Builder, field *protogen.Field) {
 }
 
 func writeStructTag(builder *strings.Builder, field *protogen.Field) {
-	glog.Infof("writeStructTag(): field: %s", getFieldProtoName(field))
 	options := getFieldOptions(field)
 	if options.StructTag != "" {
-		glog.Infof("writing struct tag")
-		glog.Infof(options.StructTag)
 		builder.WriteString(".StructTag(")
 		builder.WriteString(options.StructTag)
 		builder.WriteString(")")

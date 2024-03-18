@@ -5,8 +5,8 @@ go 1.22
 toolchain go1.22.0
 
 require (
-	github.com/emirpasic/gods v1.18.1
 	github.com/gertd/go-pluralize v0.2.1
+	github.com/go-openapi/inflect v0.21.0
 	github.com/golang/glog v1.2.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/samber/lo v1.39.0

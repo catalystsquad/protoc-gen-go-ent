@@ -151,7 +151,7 @@ func getMessageProtoName(message *protogen.Message) string {
 }
 
 func getPluralMessageProtoName(message *protogen.Message) string {
-	return pluralizer.Plural(getMessageProtoName(message))
+	return plural(getMessageProtoName(message))
 }
 
 func writeSchemaFileHeader(g *protogen.GeneratedFile, file *protogen.File, message *protogen.Message) {

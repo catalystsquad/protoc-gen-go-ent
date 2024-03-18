@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/gertd/go-pluralize"
+	"github.com/go-openapi/inflect"
 	"github.com/golang/glog"
 	"google.golang.org/protobuf/compiler/protogen"
 	"strings"
@@ -10,7 +10,8 @@ import (
 
 const appPackageName = "app"
 
-var pluralizer = pluralize.NewClient()
+var acronyms = map[string]struct{}{}
+var rules = ruleset()
 
 func GenerateApp(gen *protogen.Plugin) error {
 	writeGenerate(gen)
@@ -367,3 +368,28 @@ func main() {
     }
 }
 `
+
+// plural a name.
+func plural(value string) string {
+	p := rules.Pluralize(value)
+	if p == value {
+		p += "Slice"
+	}
+	return p
+}
+
+func ruleset() *inflect.Ruleset {
+	rules := inflect.NewDefaultRuleset()
+	// Add common initialism from golint and more.
+	for _, w := range []string{
+		"ACL", "API", "ASCII", "AWS", "CPU", "CSS", "DNS", "EOF", "GB", "GUID",
+		"HCL", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "KB", "LHS", "MAC",
+		"MB", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "SSO",
+		"TCP", "TLS", "TTL", "UDP", "UI", "UID", "URI", "URL", "UTF8", "UUID",
+		"VM", "XML", "XMPP", "XSRF", "XSS",
+	} {
+		acronyms[w] = struct{}{}
+		rules.AddAcronym(w)
+	}
+	return rules
+}
