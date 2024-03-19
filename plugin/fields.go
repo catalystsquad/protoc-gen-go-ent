@@ -328,13 +328,11 @@ var repeatedProtoFieldTypeToEntFieldTypeMap = map[protoreflect.Kind]string{
 func getFieldOptions(field *protogen.Field) ent.EntFieldOptions {
 	emptyOptions := ent.EntFieldOptions{EdgeOptions: &ent.EntEdgeOptions{}}
 	if field.Desc.Options() == nil {
-		//glog.Infof("field %s doesn't have options", getFieldName(field))
 		// return empty options
 		return emptyOptions
 	}
 	options, ok := field.Desc.Options().(*descriptorpb.FieldOptions)
 	if !ok {
-		//glog.Infof("field %s doesn't have field options", getFieldName(field))
 		// return empty options
 		return emptyOptions
 	}
@@ -342,17 +340,14 @@ func getFieldOptions(field *protogen.Field) ent.EntFieldOptions {
 	v := proto.GetExtension(options, ent.E_Field)
 	if v == nil {
 		// return empty options
-		//glog.Infof("field %s doesn't have the right extension", getFieldName(field))
 		return emptyOptions
 	}
 
 	opts, ok := v.(*ent.EntFieldOptions)
 	if !ok || opts == nil {
-		//glog.Infof("field %s doesn't have ent field options", getFieldName(field))
 		// return empty options
 		return emptyOptions
 	}
-	//glog.Infof("field %s has field options", getFieldName(field))
 	return *opts
 }
 

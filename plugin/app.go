@@ -3,7 +3,6 @@ package plugin
 import (
 	"fmt"
 	"github.com/go-openapi/inflect"
-	"github.com/golang/glog"
 	"google.golang.org/protobuf/compiler/protogen"
 	"strings"
 )
@@ -68,7 +67,6 @@ func writeGqlGen(gen *protogen.Plugin) {
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
 				thing := fmt.Sprintf("  - app/ent/%s", strings.ToLower(messageProtoName))
-				glog.Infof(thing)
 				g.P(thing)
 			} else {
 			}
@@ -88,7 +86,6 @@ func writeGqlGenSchemaConfig(g *protogen.GeneratedFile, gen *protogen.Plugin) {
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
 				thing := fmt.Sprintf("  - %s.graphql", strings.ToLower(messageProtoName))
-				glog.Infof(thing)
 				g.P(thing)
 			} else {
 			}
@@ -115,16 +112,12 @@ func writeEntResolvers(gen *protogen.Plugin) {
 	g.P(resolversContent)
 	for _, f := range gen.Files {
 		if !f.Generate {
-			glog.Infof("writeEntResolvers skipping file: %s", f.Desc.FullName())
 			continue
 		}
-		glog.Infof("writeEntResolvers handling file: %s", f.Desc.FullName())
 		for _, m := range f.Messages {
-			glog.Infof("writeEntResolvers handling message %s", getMessageProtoName(m))
 			if getMessageOptions(m).Gen {
 				messageProtoName := getMessageProtoName(m)
 				definition := fmt.Sprintf("func (r *queryResolver) %s(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.%sOrder) (*ent.%sConnection, error) {return r.client.%s.Query().Paginate(ctx, after, first, before, last, ent.With%sOrder(orderBy), ent.With%sFilter(where.Filter))}", getPluralMessageProtoName(m), messageProtoName, messageProtoName, messageProtoName, messageProtoName, messageProtoName)
-				glog.Infof(definition)
 				g.P(definition)
 			} else {
 			}

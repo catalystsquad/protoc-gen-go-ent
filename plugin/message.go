@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
-	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
@@ -130,7 +129,6 @@ func shouldHandleMessage(message *protogen.Message) bool {
 
 func createSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
 	fileName := getSchemaFileName(file, message)
-	glog.Infof("writing schema file: %s", fileName)
 	g := gen.NewGeneratedFile(fileName, ".")
 	return g
 }

@@ -21,7 +21,6 @@ func main() {
 			return nil
 		}
 		if *config.GenerateApp {
-			glog.Infof("generating app")
 			err := plugin.GenerateApp(gen)
 			if err != nil {
 				return err
@@ -29,10 +28,8 @@ func main() {
 		}
 		for _, f := range gen.Files {
 			if !f.Generate {
-				glog.Infof("skipping file: %s", f.Desc.FullName())
 				continue
 			}
-			glog.Infof("handling file: %s", f.Desc.FullName())
 			err := plugin.HandleProtoFile(gen, f)
 			if err != nil {
 				return err
