@@ -12,7 +12,7 @@ enum Origin {
   ORIGIN_FOREIGN = 2;
 }
 
-message DummyWithOptions {
+message Dummy {
   option (ent.opts) = {gen: true};
   string id = 1;
   string aString = 2;

@@ -3,7 +3,6 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -79,9 +78,13 @@ func generateDeleteMutation(message *protogen.Message) error {
 }
 
 func generateQueries(message *protogen.Message) {
+	generateListQuery(message)
+	generateGetByIdQuery(message)
+}
+
+func generateListQuery(message *protogen.Message) {
 	if len(getNonMessageFields(message)) > 0 {
 		name := getPluralMessageProtoName(message)
-		glog.Infof("query name: %s", name)
 		queryFile.P("query ", name, "(", getQueryVars(message), ") {")
 		queryFile.P(indent, strcase.ToLowerCamel(name), "(", getQueryArgs(), ") {")
 		queryFile.P(indent, indent, "edges {")
@@ -92,6 +95,15 @@ func generateQueries(message *protogen.Message) {
 		queryFile.P(indent, "}")
 		queryFile.P("}")
 	}
+}
+
+func generateGetByIdQuery(message *protogen.Message) {
+	name := getMessageProtoName(message)
+	queryFile.P("query ", name, "ById($id: ID!) {")
+	queryFile.P(indent, strcase.ToLowerCamel(name), "(id: $id) {")
+	queryFile.P(indent, indent, indent, indent, getGraphqlFieldNamesString(message, false, false))
+	queryFile.P(indent, "}")
+	queryFile.P("}")
 }
 
 func getQueryVars(message *protogen.Message) string {

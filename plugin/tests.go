@@ -3,6 +3,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -30,7 +31,14 @@ func generateTests(gen *protogen.Plugin, message *protogen.Message) error {
 	if err != nil {
 		return err
 	}
-	generateHelperFunctions(message)
+	err = generateGetByIdTest(message)
+	if err != nil {
+		return err
+	}
+	err = generateHelperFunctions(message)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -43,8 +51,25 @@ func generateCreateTest(message *protogen.Message) error {
 	testFile.P(indent, "fake := ", newFakeObjectFunctionName, "()")
 	testFile.P("actual, err := ", createObjectFunctionName, "(fake)")
 	testFile.P("require.NoError(t, err)")
-	assertFunctionName := getAssertObjectEqualityFunctionName(message)
+	assertFunctionName := getAssertCreateEqualityFunctionName(message)
 	testFile.P(assertFunctionName, "(t, fake, actual)")
+	testFile.P("}")
+	testFile.P()
+	return nil
+}
+
+func generateGetByIdTest(message *protogen.Message) error {
+	objectName := getMessageProtoName(message)
+	testFile.P("func TestGet", objectName, "ById(t *testing.T) {")
+	newFakeObjectFunctionName := getNewFakeFunctionName(message)
+	createObjectFunctionName := getCreateFunctionName(message)
+	testFile.P(indent, "fake := ", newFakeObjectFunctionName, "()")
+	testFile.P("actual, err := ", createObjectFunctionName, "(fake)")
+	testFile.P("require.NoError(t, err)")
+	testFile.P("fetched, err := ", getGetByIdFunctionName(message), "(actual.ID)")
+	testFile.P("require.NoError(t, err)")
+	assertFunctionName := getAssertGetByIdEqualityFunctionName(message)
+	testFile.P(assertFunctionName, "(t, actual, fetched)")
 	testFile.P("}")
 	testFile.P()
 	return nil
@@ -56,11 +81,9 @@ func generateHelperFunctions(message *protogen.Message) error {
 	if err != nil {
 		return err
 	}
-	err = generateAssertObjectEqualityFunction(message)
-	if err != nil {
-		return err
-	}
-
+	generateAssertCreateEqualityFunction(message)
+	generateAssertGetByIdEqualityFunction(message)
+	generateGetByIdFunction(message)
 	return nil
 }
 
@@ -97,13 +120,39 @@ func generateNewFakeObjectFunction(message *protogen.Message) error {
 	return nil
 }
 
-func generateAssertObjectEqualityFunction(message *protogen.Message) error {
-	objectName := getCreateObjectClientType(message)
-	functionName := getAssertObjectEqualityFunctionName(message)
-	testFile.P("func ", functionName, "(t *testing.T, expected, actual client.", objectName, ") {")
+func generateAssertCreateEqualityFunction(message *protogen.Message) {
+	functionName := getAssertCreateEqualityFunctionName(message)
+	expectedType := getCreateObjectClientType(message)
+	def := fmt.Sprintf("func %s(t *testing.T, expected, actual client.%s) {", functionName, expectedType)
+	glog.Infof("create def: %s", def)
+	testFile.P(def)
 	writeFieldAssertions(message)
 	testFile.P("}")
-	return nil
+}
+
+func generateAssertGetByIdEqualityFunction(message *protogen.Message) {
+	functionName := getAssertGetByIdEqualityFunctionName(message)
+	expectedType := getCreateObjectClientType(message)
+	actualType := getGetObjectByIdClientType(message)
+	def := fmt.Sprintf("func %s(t *testing.T, expected client.%s, actual *client.%s) {", functionName, expectedType, actualType)
+	glog.Infof("get def: %s", def)
+	testFile.P(def)
+	writeFieldAssertions(message)
+	testFile.P("}")
+}
+
+func generateGetByIdFunction(message *protogen.Message) {
+	testFile.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/google/uuid"})
+	messageTypeName := getMessageProtoName(message)
+	clientName := getGetByIdObjectName(message)
+	functionName := getGetByIdFunctionName(message)
+	testFile.P("func ", functionName, "(id uuid.UUID) (*client.", clientName, "_", messageTypeName, ", error) {")
+	testFile.P("ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)")
+	testFile.P("defer cancel()")
+	testFile.P("response, err := gqlClient.", messageTypeName, "ByID(ctx, id)")
+	testFile.P("if err != nil { return nil, err }")
+	testFile.P("return response.", messageTypeName, ", nil")
+	testFile.P("}")
 }
 
 func getNewFakeFunctionName(message *protogen.Message) string {
@@ -111,9 +160,17 @@ func getNewFakeFunctionName(message *protogen.Message) string {
 	return fmt.Sprintf("newFake%s", objectName)
 }
 
-func getAssertObjectEqualityFunctionName(message *protogen.Message) string {
-	objectName := getCreateObjectName(message)
-	return fmt.Sprintf("assert%sEquality", objectName)
+func getAssertCreateEqualityFunctionName(message *protogen.Message) string {
+	return fmt.Sprintf("assertCreate%sEquality", getMessageProtoName(message))
+}
+
+func getAssertGetByIdEqualityFunctionName(message *protogen.Message) string {
+	return fmt.Sprintf("assert%sByIdEquality", getMessageProtoName(message))
+}
+
+func getGetByIdFunctionName(message *protogen.Message) string {
+	messageType := getMessageProtoName(message)
+	return fmt.Sprintf("get%sById", messageType)
 }
 
 func writeFieldFakeData(message *protogen.Message) error {
@@ -278,9 +335,21 @@ func getCreateObjectClientType(message *protogen.Message) string {
 	objectName := getCreateObjectName(message)
 	return fmt.Sprintf("%s_%s", objectName, objectName)
 }
+
+func getGetObjectByIdClientType(message *protogen.Message) string {
+	messageType := getMessageProtoName(message)
+	objectName := getGetByIdObjectName(message)
+	return fmt.Sprintf("%s_%s", objectName, messageType)
+}
+
 func getCreateObjectName(message *protogen.Message) string {
 	protoName := getMessageProtoName(message)
 	return fmt.Sprintf("Create%s", protoName)
+}
+
+func getGetByIdObjectName(message *protogen.Message) string {
+	protoName := getMessageProtoName(message)
+	return fmt.Sprintf("%sById", protoName)
 }
 
 func getCreateArgs(message *protogen.Message) string {
