@@ -16,34 +16,42 @@ message Dummy {
   option (ent.opts) = {gen: true};
   string id = 1;
   string aString = 2;
-  repeated string someStrings = 18;
-  bool aBool = 3;
-  int32 anInt32 = 4;
-  repeated int32 someInt32s = 19;
-  sint32 anSInt32 = 5;
-  repeated sint32 someSInt32s = 20;
-  uint32 aUint32 = 6;
-  repeated uint32 someUint32s = 21;
-  sfixed32 anSFixed32 = 7;
-  repeated sfixed32 someSFixed32s = 22;
-  fixed32 aFixed32 = 8;
-  repeated fixed32 someFixed32s = 23;
-  int64 anInt64 = 9;
-  repeated int64 someInt64s = 24;
-  sint64 aSInt64 = 10;
-  repeated sint64 someSInt64s = 25;
-  uint64 aUint64 = 11;
-  repeated uint64 someUint64s = 26;
-  sfixed64 anSFixed64 = 12;
-  repeated sfixed64 someSFixed64s = 27;
-  fixed64 aFixed64 = 13;
-  repeated fixed64 someFixed64s = 28;
-  float aFloat = 14;
-  repeated float someFloats = 29;
-  double aDouble = 15;
-  repeated double someDoubles = 30;
-  optional string anOptionalString = 16;
-  Origin origin = 17;
+//  repeated string someStrings = 18;
+//  bool aBool = 3;
+//  int32 anInt32 = 4;
+//  repeated int32 someInt32s = 19;
+//  sint32 anSInt32 = 5;
+//  repeated sint32 someSInt32s = 20;
+//  uint32 aUint32 = 6;
+//  repeated uint32 someUint32s = 21;
+//  sfixed32 anSFixed32 = 7;
+//  repeated sfixed32 someSFixed32s = 22;
+//  fixed32 aFixed32 = 8;
+//  repeated fixed32 someFixed32s = 23;
+//  int64 anInt64 = 9;
+//  repeated int64 someInt64s = 24;
+//  sint64 aSInt64 = 10;
+//  repeated sint64 someSInt64s = 25;
+//  uint64 aUint64 = 11;
+//  repeated uint64 someUint64s = 26;
+//  sfixed64 anSFixed64 = 12;
+//  repeated sfixed64 someSFixed64s = 27;
+//  fixed64 aFixed64 = 13;
+//  repeated fixed64 someFixed64s = 28;
+//  float aFloat = 14;
+//  repeated float someFloats = 29;
+//  double aDouble = 15;
+//  repeated double someDoubles = 30;
+//  optional string anOptionalString = 16;
+//  Origin origin = 17;
+  AnotherDummy another = 31;
+}
+
+message AnotherDummy {
+  option (ent.opts) = {gen: true};
+  string id = 1;
+  string name = 2;
+  Dummy dummy = 3 [(ent.field).edge_options = {ref: "another"}];
 }
 
 // a message that exercises field options

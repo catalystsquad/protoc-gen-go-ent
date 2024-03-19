@@ -3,7 +3,6 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/iancoleman/strcase"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -12,6 +11,8 @@ import (
 )
 
 var testFile *protogen.GeneratedFile
+
+const newLine = "\n"
 
 func initTestFile(gen *protogen.Plugin, message *protogen.Message) {
 	fileName := getAppFileName("test", fmt.Sprintf("%s_graphql_test.go", strcase.ToSnake(getMessageProtoName(message))))
@@ -27,15 +28,11 @@ func generateTests(gen *protogen.Plugin, message *protogen.Message) error {
 	writeTestPackage()
 	writeTestImports()
 	writeTestClient()
-	err := generateCreateTest(message)
-	if err != nil {
-		return err
-	}
-	err = generateGetByIdTest(message)
-	if err != nil {
-		return err
-	}
-	err = generateHelperFunctions(message)
+	generateCreateTest(message)
+	generateUpdateTest(message)
+	generateGetByIdTest(message)
+	generateDeleteTest(message)
+	err := generateHelperFunctions(message)
 	if err != nil {
 		return err
 	}
@@ -43,175 +40,148 @@ func generateTests(gen *protogen.Plugin, message *protogen.Message) error {
 	return nil
 }
 
-func generateCreateTest(message *protogen.Message) error {
-	objectName := getCreateObjectName(message)
-	testFile.P("func Test", objectName, "(t *testing.T) {")
-	newFakeObjectFunctionName := getNewFakeFunctionName(message)
-	createObjectFunctionName := getCreateFunctionName(message)
-	testFile.P(indent, "fake := ", newFakeObjectFunctionName, "()")
-	testFile.P("actual, err := ", createObjectFunctionName, "(fake)")
-	testFile.P("require.NoError(t, err)")
-	assertFunctionName := getAssertCreateEqualityFunctionName(message)
-	testFile.P(assertFunctionName, "(t, fake, actual)")
-	testFile.P("}")
-	testFile.P()
-	return nil
+func generateCreateTest(message *protogen.Message) {
+	testFile.P(templateMessageType(createTestTemplate, message, true))
 }
 
-func generateGetByIdTest(message *protogen.Message) error {
-	objectName := getMessageProtoName(message)
-	testFile.P("func TestGet", objectName, "ById(t *testing.T) {")
-	newFakeObjectFunctionName := getNewFakeFunctionName(message)
-	createObjectFunctionName := getCreateFunctionName(message)
-	testFile.P(indent, "fake := ", newFakeObjectFunctionName, "()")
-	testFile.P("actual, err := ", createObjectFunctionName, "(fake)")
-	testFile.P("require.NoError(t, err)")
-	testFile.P("fetched, err := ", getGetByIdFunctionName(message), "(actual.ID)")
-	testFile.P("require.NoError(t, err)")
-	assertFunctionName := getAssertGetByIdEqualityFunctionName(message)
-	testFile.P(assertFunctionName, "(t, actual, fetched)")
-	testFile.P("}")
-	testFile.P()
-	return nil
+func generateUpdateTest(message *protogen.Message) {
+	testFile.P(templateMessageType(updateTestTemplate, message, true))
+}
+
+func generateGetByIdTest(message *protogen.Message) {
+	testFile.P(templateMessageType(getByIdTestTemplate, message, true))
+}
+
+func generateDeleteTest(message *protogen.Message) {
+	testFile.P(templateMessageType(deleteTestTemplate, message, true))
 }
 
 func generateHelperFunctions(message *protogen.Message) error {
 	generateCreateFunction(message)
-	err := generateNewFakeObjectFunction(message)
+	generateUpdateFunction(message)
+	err := generateNewFakeCreateObjectFunction(message)
+	if err != nil {
+		return err
+	}
+	err = generateNewFakeUpdateObjectFunction(message)
 	if err != nil {
 		return err
 	}
 	generateAssertCreateEqualityFunction(message)
-	generateAssertGetByIdEqualityFunction(message)
+	generateAssertUpdateEqualityFunction(message)
+	generateAssertGetByIdAfterCreateEqualityFunction(message)
+	generateAssertGetByIdAfterUpdateEqualityFunction(message)
 	generateGetByIdFunction(message)
+	generateDeleteFunction(message)
 	return nil
 }
 
 func generateCreateFunction(message *protogen.Message) {
-	objectName := getCreateObjectName(message)
-	inputVarName := strcase.ToLowerCamel(objectName)
-	clientType := getCreateObjectClientType(message)
-	functionName := getCreateFunctionName(message)
-	testFile.P("func ", functionName, "(", inputVarName, " client.", clientType, ") (client.", clientType, ", error) {")
-	testFile.P("ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)")
-	testFile.P("defer cancel()")
-	testFile.P("response, err := gqlClient.", objectName, "(ctx, ", getCreateArgs(message), ")")
-	testFile.P("if err != nil { return client.", clientType, "{}, err }")
-	testFile.P("return response.", objectName, ", nil")
-	testFile.P("}")
+	def := templateMessageType(createFunctionTemplate, message, true)
+	def = fmt.Sprintf(def, getCreateArgs(message))
+	testFile.P(def, "\n")
 }
 
-func getCreateFunctionName(message *protogen.Message) string {
-	protoName := getMessageProtoName(message)
-	return fmt.Sprintf("create%s", protoName)
+func generateUpdateFunction(message *protogen.Message) {
+	def := templateMessageType(updateFunctionTemplate, message, true)
+	def = fmt.Sprintf(def, getUpdateArgs(message))
+	testFile.P(def, "\n")
 }
 
-func generateNewFakeObjectFunction(message *protogen.Message) error {
-	objectName := getCreateObjectClientType(message)
-	functionName := getNewFakeFunctionName(message)
-	testFile.P("func ", functionName, "() client.", objectName, "{")
-	testFile.P(indent, "fake := client.", objectName, "{}")
-	err := writeFieldFakeData(message)
+func generateNewFakeCreateObjectFunction(message *protogen.Message) error {
+	def := templateMessageType(newFakeCreateFunctionTemplate, message, true)
+	body, err := getFieldFakeDataContent(message)
 	if err != nil {
 		return err
 	}
-	testFile.P(indent, "return fake")
-	testFile.P("}")
+	testFile.P(fmt.Sprintf(def, body))
+	return nil
+}
+
+func generateNewFakeUpdateObjectFunction(message *protogen.Message) error {
+	def := templateMessageType(newFakeUpdateFunctionTemplate, message, true)
+	body, err := getFieldFakeDataContent(message)
+	if err != nil {
+		return err
+	}
+	testFile.P(fmt.Sprintf(def, body))
 	return nil
 }
 
 func generateAssertCreateEqualityFunction(message *protogen.Message) {
-	functionName := getAssertCreateEqualityFunctionName(message)
-	expectedType := getCreateObjectClientType(message)
-	def := fmt.Sprintf("func %s(t *testing.T, expected, actual client.%s) {", functionName, expectedType)
-	glog.Infof("create def: %s", def)
-	testFile.P(def)
-	writeFieldAssertions(message)
-	testFile.P("}")
+	def := templateMessageType(assertCreateEqualityTemplate, message, true)
+	body := getFieldAssertions(message)
+	testFile.P(fmt.Sprintf(def, body))
 }
 
-func generateAssertGetByIdEqualityFunction(message *protogen.Message) {
-	functionName := getAssertGetByIdEqualityFunctionName(message)
-	expectedType := getCreateObjectClientType(message)
-	actualType := getGetObjectByIdClientType(message)
-	def := fmt.Sprintf("func %s(t *testing.T, expected client.%s, actual *client.%s) {", functionName, expectedType, actualType)
-	glog.Infof("get def: %s", def)
-	testFile.P(def)
-	writeFieldAssertions(message)
-	testFile.P("}")
+func generateAssertUpdateEqualityFunction(message *protogen.Message) {
+	def := templateMessageType(assertUpdateEqualityTemplate, message, true)
+	body := getFieldAssertions(message)
+	testFile.P(fmt.Sprintf(def, body))
+}
+
+func generateAssertGetByIdAfterCreateEqualityFunction(message *protogen.Message) {
+	def := templateMessageType(assertGetByIdAfterCreateEqualityTemplate, message, true)
+	body := getFieldAssertions(message)
+	testFile.P(fmt.Sprintf(def, body))
+}
+
+func generateAssertGetByIdAfterUpdateEqualityFunction(message *protogen.Message) {
+	def := templateMessageType(assertGetByIdAfterUpdateEqualityTemplate, message, true)
+	body := getFieldAssertions(message)
+	testFile.P(fmt.Sprintf(def, body))
 }
 
 func generateGetByIdFunction(message *protogen.Message) {
 	testFile.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "github.com/google/uuid"})
-	messageTypeName := getMessageProtoName(message)
-	clientName := getGetByIdObjectName(message)
-	functionName := getGetByIdFunctionName(message)
-	testFile.P("func ", functionName, "(id uuid.UUID) (*client.", clientName, "_", messageTypeName, ", error) {")
-	testFile.P("ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)")
-	testFile.P("defer cancel()")
-	testFile.P("response, err := gqlClient.", messageTypeName, "ByID(ctx, id)")
-	testFile.P("if err != nil { return nil, err }")
-	testFile.P("return response.", messageTypeName, ", nil")
-	testFile.P("}")
+	testFile.P(templateMessageType(getByIdFunctionTemplate, message, true))
 }
 
-func getNewFakeFunctionName(message *protogen.Message) string {
-	objectName := getCreateObjectName(message)
-	return fmt.Sprintf("newFake%s", objectName)
+func generateDeleteFunction(message *protogen.Message) {
+	testFile.P(templateMessageType(deleteFunctionTemplate, message, true))
 }
 
-func getAssertCreateEqualityFunctionName(message *protogen.Message) string {
-	return fmt.Sprintf("assertCreate%sEquality", getMessageProtoName(message))
-}
-
-func getAssertGetByIdEqualityFunctionName(message *protogen.Message) string {
-	return fmt.Sprintf("assert%sByIdEquality", getMessageProtoName(message))
-}
-
-func getGetByIdFunctionName(message *protogen.Message) string {
-	messageType := getMessageProtoName(message)
-	return fmt.Sprintf("get%sById", messageType)
-}
-
-func writeFieldFakeData(message *protogen.Message) error {
+func getFieldFakeDataContent(message *protogen.Message) (string, error) {
+	builder := &strings.Builder{}
 	fields := getNonMessageFields(message)
 	var err error
 	for _, field := range fields {
 		if !isIdField(field) {
 			if fieldIsRepeated(field) {
-				err = writeRepeatedFieldFakeDefinition(field)
+				err = writeRepeatedFieldFakeDefinition(builder, field)
 			} else {
-				err = writeFieldFakeDefinition(field)
+				err = writeFieldFakeDefinition(builder, field)
 			}
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 	}
 
-	return nil
+	return builder.String(), nil
 }
 
-func writeFieldAssertions(message *protogen.Message) {
+func getFieldAssertions(message *protogen.Message) string {
+	builder := &strings.Builder{}
 	fields := getNonMessageFields(message)
 	for _, field := range fields {
 		if !isIdField(field) {
-
 			if fieldIsRepeated(field) {
-				writeRepeatedFieldEqualityAssertion(field)
+				writeRepeatedFieldEqualityAssertion(builder, field)
 			} else {
-				writeFieldEqualityAssertion(field)
+				writeFieldEqualityAssertion(builder, field)
 			}
-
 		}
 	}
+
+	return builder.String()
 }
 
-func writeRepeatedFieldEqualityAssertion(field *protogen.Field) {
+func writeRepeatedFieldEqualityAssertion(builder *strings.Builder, field *protogen.Field) {
 	fieldGoName := getRepeatedFieldName(field)
-	testFile.P("for _, expected := range expected.", fieldGoName, "{")
-	testFile.P(indent, "require.True(t, ", "lo.Contains(actual.", fieldGoName, ", expected))")
-	testFile.P("}")
+	builder.WriteString(fmt.Sprintf("for _, expected := range expected.%s {\n", fieldGoName))
+	builder.WriteString(fmt.Sprintf("require.True(t, lo.Contains(actual.%s, expected))\n", fieldGoName))
+	builder.WriteString("}\n")
 }
 
 func getRepeatedFieldName(field *protogen.Field) string {
@@ -223,18 +193,18 @@ func getRepeatedFieldName(field *protogen.Field) string {
 	return fieldGoName
 }
 
-func writeFieldEqualityAssertion(field *protogen.Field) {
+func writeFieldEqualityAssertion(builder *strings.Builder, field *protogen.Field) {
 	fieldGoName := getFieldGoName(field)
-	testFile.P("require.Equal(t, expected.", fieldGoName, ", actual.", fieldGoName, ")")
+	builder.WriteString(fmt.Sprintf("require.Equal(t, expected.%s, actual.%s)\n", fieldGoName, fieldGoName))
 }
 
-func writeFieldFakeDefinition(field *protogen.Field) error {
+func writeFieldFakeDefinition(builder *strings.Builder, field *protogen.Field) error {
 	goFieldName := getFieldGoName(field)
 	gofakeitFunc, err := getGoFakeItFunctionForFieldBasedOnType(field)
 	if err != nil {
 		return err
 	}
-	testFile.P("fake.", goFieldName, " = ", gofakeitFunc)
+	builder.WriteString(fmt.Sprintf("fake.%s = %s\n", goFieldName, gofakeitFunc))
 	return nil
 }
 
@@ -249,15 +219,15 @@ func getFakeFieldPath(field *protogen.Field) string {
 	return fmt.Sprintf("fake.%s", goFieldName)
 }
 
-func writeRepeatedFieldFakeDefinition(field *protogen.Field) error {
+func writeRepeatedFieldFakeDefinition(builder *strings.Builder, field *protogen.Field) error {
 	fieldPath := getFakeFieldPath(field)
 	gofakeitFunc, err := getGoFakeItFunctionForFieldBasedOnType(field)
 	if err != nil {
 		return err
 	}
-	testFile.P("for i := 0; i < v6.Number(1, 3); i++ {")
-	testFile.P(indent, fieldPath, " = append(", fieldPath, ", ", gofakeitFunc, ")")
-	testFile.P("}")
+	builder.WriteString("for i := 0; i < v6.Number(1, 3); i++ {\n")
+	builder.WriteString(fmt.Sprintf("%s = append(%s, %s)\n", fieldPath, fieldPath, gofakeitFunc))
+	builder.WriteString("}\n")
 	return nil
 }
 
@@ -347,6 +317,11 @@ func getCreateObjectName(message *protogen.Message) string {
 	return fmt.Sprintf("Create%s", protoName)
 }
 
+func getUpdateObjectName(message *protogen.Message) string {
+	protoName := getMessageProtoName(message)
+	return fmt.Sprintf("Update%s", protoName)
+}
+
 func getGetByIdObjectName(message *protogen.Message) string {
 	protoName := getMessageProtoName(message)
 	return fmt.Sprintf("%sById", protoName)
@@ -354,6 +329,26 @@ func getGetByIdObjectName(message *protogen.Message) string {
 
 func getCreateArgs(message *protogen.Message) string {
 	objectName := getCreateObjectName(message)
+	inputVarName := strcase.ToLowerCamel(objectName)
+	fields := getNonMessageFields(message)
+	args := []string{}
+	for _, field := range fields {
+		if !isIdField(field) {
+			var fieldGoName string
+			if fieldIsRepeated(field) {
+				fieldGoName = getRepeatedFieldName(field)
+			} else {
+				fieldGoName = getFieldGoName(field)
+			}
+			args = append(args, fmt.Sprintf("%s.%s", inputVarName, fieldGoName))
+		}
+	}
+
+	return strings.Join(args, ",")
+}
+
+func getUpdateArgs(message *protogen.Message) string {
+	objectName := getUpdateObjectName(message)
 	inputVarName := strcase.ToLowerCamel(objectName)
 	fields := getNonMessageFields(message)
 	args := []string{}
