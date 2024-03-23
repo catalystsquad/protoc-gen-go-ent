@@ -31,6 +31,9 @@ message EntFieldOptions {
   string struct_tag = 9;
   bool includeUnspecifiedEnum = 10;
   EntEdgeOptions edge_options = 11;
+  string go_type = 12;
+  bool sensitive = 13;
+  string graphql_type = 14;
 }
 
 message EntEdgeOptions {
@@ -42,6 +45,8 @@ message EntEdgeOptions {
   string struct_tag = 6;
   string comment = 7;
   string ref = 9;
+  bool bind = 10;
+  string bind_field = 11;
 }
 
 message EdgeStorageKey {

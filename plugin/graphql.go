@@ -171,14 +171,14 @@ func getQueryMutationVarsDefinition(message *protogen.Message) (string, error) {
 
 func getFieldVarDefinition(field *protogen.Field) (string, error) {
 	varName := getGraphqlFieldName(field)
-	graphqlType, err := getGraphqlType(field)
+	graphqlType, err := getFullGraphqlType(field)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("$%s: %s", varName, graphqlType), nil
 }
 
-func getGraphqlType(field *protogen.Field) (string, error) {
+func getFullGraphqlType(field *protogen.Field) (string, error) {
 	var graphqlType string
 
 	if fieldTypeIsMessage(field) {

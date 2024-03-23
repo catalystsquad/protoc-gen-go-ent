@@ -66,7 +66,7 @@ func writeField(g *protogen.GeneratedFile, field *protogen.Field) error {
 		writeStorageKey(builder, field)
 		writeStructTag(builder, field)
 		writeEnum(builder, field)
-		writeAnnotations(builder, field)
+		//writeAnnotations(builder, field)
 		builder.WriteString(",")
 		g.P(builder.String())
 	}
@@ -237,18 +237,18 @@ func writeEnum(builder *strings.Builder, field *protogen.Field) {
 	}
 }
 
-func writeAnnotations(builder *strings.Builder, field *protogen.Field) {
-	if fieldIsRepeated(field) {
-		return
-	}
-	annotations := []string{}
-	annotations = append(annotations, getOrderFieldDefinition(getOrderFieldName(field)))
-	graphqlType, ok := protoToGraphqlTypeMap[getFieldKind(field)]
-	if ok {
-		annotations = append(annotations, fmt.Sprintf("entgql.Type(\"%s\")", graphqlType))
-	}
-	builder.WriteString(fmt.Sprintf(".Annotations(%s)", strings.Join(annotations, ",")))
-}
+//func writeAnnotations(builder *strings.Builder, field *protogen.Field) {
+//	if fieldIsRepeated(field) {
+//		return
+//	}
+//	annotations := []string{}
+//	annotations = append(annotations, getOrderFieldDefinition(getOrderFieldName(field)))
+//	graphqlType, ok := protoToGraphqlTypeMap[getFieldKind(field)]
+//	if ok {
+//		annotations = append(annotations, fmt.Sprintf("entgql.Type(\"%s\")", graphqlType))
+//	}
+//	builder.WriteString(fmt.Sprintf(".Annotations(%s)", strings.Join(annotations, ",")))
+//}
 
 // entgql doesn't support all types out of the box, these types must be paired with their respective gqlgen type
 // which is specified in gqlgen.yml, and the entgql.Type() must be specified, or the code is not generated correctly

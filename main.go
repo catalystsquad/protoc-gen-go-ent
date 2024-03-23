@@ -20,23 +20,7 @@ func main() {
 			// skip options
 			return nil
 		}
-		if *config.GenerateApp {
-			err := plugin.GenerateApp(gen)
-			if err != nil {
-				return err
-			}
-		}
-		for _, f := range gen.Files {
-			if !f.Generate {
-				continue
-			}
-			err := plugin.HandleProtoFile(gen, f)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return plugin.Generate(gen)
 	})
 }
 
@@ -44,6 +28,9 @@ func setupFlags() flag.FlagSet {
 	var flags flag.FlagSet
 	config.LogLevel = flags.String("loglevel", "error", "logging level")
 	config.GenerateApp = flags.Bool("genapp", false, "set to true to generate an ent graphql app")
+	config.EntSchemaDir = flags.String("entSchemaDir", "schema", "directory to output ent schemas to")
+	config.GraphqlSchemaDir = flags.String("graphqlSchemaDir", "graphql_schema", "directory to output graphql schemas to")
+	config.GraphqlResolverDir = flags.String("graphqlResolverDir", "resolvers", "directory to output graphql resolvers to")
 	return flags
 }
 

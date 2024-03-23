@@ -14,10 +14,11 @@ build-example:
 	go install
 	buf generate --template example/buf.gen.yaml
 clean:
-	rm -f example/cockroachdb/*.go
-	rm -f example/postgres/*.go
 	rm -f options/*.go
-	rm -rf example/app
+	rm -rf example/config
+	rm -rf example/graphql_schema
+	rm -rf example/resolvers
+	rm -rf example/schema
 generate-ent:
 	cd example/app && go generate
 generate-gql-client:
@@ -25,3 +26,9 @@ generate-gql-client:
 generate: clean build-options build-example
 test: generate
 	go test -v ./test
+build-demo:
+	cp -r example/schema/* demo_app/ent/schema
+	cp example/config/* demo_app
+	cp example/resolvers/* demo_app
+	cp example/graphql_schema/* demo_app/graphql_schema
+	cd demo_app && go generate

@@ -1,0 +1,37 @@
+resolver:
+  layout: follow-schema
+  dir: .
+autobind:
+  - app/ent
+  - app/ent/dummy
+  - app/ent/anotherdummy
+  - app/ent/user
+  - app/ent/card
+  - app/ent/anode
+  - app/ent/pet
+  - app/ent/group
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Node:
+    model:
+      - app/ent.Noder
+  Float:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float
+  Uint32:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint32
+  Uint64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint64
+schema:
+  - ent.graphql
+  - graphql_schema/dummy.graphql
+  - graphql_schema/anotherDummy.graphql
+  - graphql_schema/user.graphql
+  - graphql_schema/card.graphql
+  - graphql_schema/anode.graphql
+  - graphql_schema/pet.graphql
+  - graphql_schema/group.graphql

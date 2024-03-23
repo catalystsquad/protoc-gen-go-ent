@@ -5,6 +5,7 @@ import (
 	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	ent "github.com/catalystsquad/protoc-gen-go-ent/options"
 	"github.com/iancoleman/strcase"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -34,17 +35,18 @@ func HandleProtoMessage(gen *protogen.Plugin, file *protogen.File, message *prot
 }
 
 func writeSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) error {
-	g := createSchemaFile(gen, file, message)
-	writeSchemaFileHeader(g, file, message)
-	writeSchemaFileImports(g, message)
-	writeSchemaFileStruct(g, message)
-	err := WriteSchemaFileFields(g, message)
-	if err != nil {
-		return err
-	}
-	WriteSchemaFileAnnotations(g, message)
-	err = WriteSchemaFileEdges(g, message)
-	return err
+	return nil
+	//g := createSchemaFile(gen, file)
+	//writeSchemaFileHeader(g, file, message)
+	//writeSchemaFileImports(g, message)
+	//writeSchemaFileStruct(g, message)
+	//err := WriteSchemaFileFields(g, message)
+	//if err != nil {
+	//	return err
+	//}
+	//WriteSchemaFileAnnotations(g, message)
+	//err = WriteSchemaFileEdges(g, message)
+	//return err
 }
 
 func writeGraphqlFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) {
@@ -121,17 +123,6 @@ func (r *queryResolver) Blarf(ctx context.Context, id uuid.UUID) (*ent.Blarf, er
 	Blarf, err := r.client.Blarf.Get(ctx, id)
 	return Blarf, err
 }`
-
-func shouldHandleMessage(message *protogen.Message) bool {
-	messageOptions := getMessageOptions(message)
-	return messageOptions.Gen
-}
-
-func createSchemaFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
-	fileName := getSchemaFileName(file, message)
-	g := gen.NewGeneratedFile(fileName, ".")
-	return g
-}
 
 func createGraphqlFile(gen *protogen.Plugin, file *protogen.File, message *protogen.Message) *protogen.GeneratedFile {
 	fileName := getAppFileName(fmt.Sprintf("%s.graphql", strings.ToLower(getMessageProtoName(message))))
@@ -232,14 +223,9 @@ func getNonIgnoredFields(message *protogen.Message) []*protogen.Field {
 }
 
 func getNonMessageFields(message *protogen.Message) []*protogen.Field {
-	fields := []*protogen.Field{}
-	for _, field := range getNonIgnoredFields(message) {
-		if !fieldTypeIsMessage(field) {
-			fields = append(fields, field)
-		}
-	}
-
-	return fields
+	return lo.Filter(message.Fields, func(item *protogen.Field, index int) bool {
+		return !fieldTypeIsMessage(item)
+	})
 }
 
 func getMessageFields(message *protogen.Message) []*protogen.Field {
