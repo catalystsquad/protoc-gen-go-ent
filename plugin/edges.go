@@ -196,9 +196,9 @@ func writeEdgeAnnotations(builder *strings.Builder, edge *protogen.Field) error 
 	return nil
 }
 
-func getOrderFieldDefinition(orderName string) string {
-	return fmt.Sprintf("entgql.OrderField(\"%s\")", orderName)
-}
+//func getOrderFieldDefinition(orderName string) string {
+//	return fmt.Sprintf("entgql.OrderField(\"%s\")", orderName)
+//}
 
 func writeStorageKeyTable(builder *strings.Builder, edge *protogen.Field) {
 	storageKeyOptions := getEdgeOptions(edge).StorageKey

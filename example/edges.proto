@@ -30,7 +30,7 @@ message Card {
   option (ent.opts) = {gen: true};
   string id = 1;
   //  one to one card -> user
-  User owner = 2 [(ent.field).edge_options = {ref: "card"}];
+  User holder = 2 [(ent.field).edge_options = {ref: "card"}];
 }
 
 message Anode {

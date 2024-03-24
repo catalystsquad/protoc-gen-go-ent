@@ -342,8 +342,22 @@ func getEntEdgeAnnotations(field *protogen.Field) ([]string, error) {
 		annotations = append(annotations, "entgql.RelayConnection()")
 		// non unique edges get the order by count annotation
 		annotations = append(annotations, fmt.Sprintf("entgql.OrderField(\"%s_COUNT\")", getOrderFieldName(field)))
+	} else {
+		// unique edges can be ordered by the other edge fields
+		fieldMessage := getFieldMessage(field)
+		orderFieldPrefix := getOrderFieldName(field)
+		for _, field := range fieldMessage.Fields {
+			if !isIdField(field) && !fieldTypeIsMessage(field) {
+				orderFieldName := fmt.Sprintf("%s_%s", orderFieldPrefix, getOrderFieldName(field))
+				annotations = append(annotations, getOrderFieldDefinition(orderFieldName))
+			}
+		}
 	}
 	return annotations, nil
+}
+
+func getOrderFieldDefinition(name string) string {
+	return fmt.Sprintf("entgql.OrderField(\"%s\")", strcase.ToScreamingSnake(name))
 }
 
 func getEntEdgeComment(field *protogen.Field) string {
@@ -474,6 +488,9 @@ func getEntFieldAnnotations(field *protogen.Field) ([]string, error) {
 		if ok && !fieldIsRepeated(field) {
 			annotations = append(annotations, getFieldGraphqlTypeAnnotationDefinition(gqlTypeOverride))
 		}
+	}
+	if !fieldIsRepeated(field) {
+		annotations = append(annotations, fmt.Sprintf("entgql.OrderField(\"%s\")", strcase.ToScreamingSnake(getFieldProtoName(field))))
 	}
 	return annotations, nil
 }
