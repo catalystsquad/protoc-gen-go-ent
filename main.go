@@ -28,9 +28,11 @@ func setupFlags() flag.FlagSet {
 	var flags flag.FlagSet
 	config.LogLevel = flags.String("loglevel", "error", "logging level")
 	config.GenerateApp = flags.Bool("genapp", false, "set to true to generate an ent graphql app")
-	config.EntSchemaDir = flags.String("entSchemaDir", "schema", "directory to output ent schemas to")
-	config.GraphqlSchemaDir = flags.String("graphqlSchemaDir", "graphql_schema", "directory to output graphql schemas to")
-	config.GraphqlResolverDir = flags.String("graphqlResolverDir", "resolvers", "directory to output graphql resolvers to")
+	config.EntSchemaDir = flags.String("entschemadir", "schema", "directory to output ent schemas to")
+	config.GraphqlSchemaDir = flags.String("graphqlschemadir", "graphql_schema", "directory to output graphql schemas to")
+	config.GraphqlResolverDir = flags.String("graphqlresolverdir", "resolvers", "directory to output graphql resolvers to")
+	config.EntPackagePath = flags.String("entpackagepath", "ent", "package path to use for ent generated files")
+	config.ResolverPackage = flags.String("resolverpackage", "resolvers", "package path to use for ent generated resolver files")
 	return flags
 }
 

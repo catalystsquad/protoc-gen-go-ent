@@ -20,13 +20,14 @@ func generateObjectResolvers(gen *protogen.Plugin, objects []SchemaObject) {
 
 func generateObjectResolver(gen *protogen.Plugin, object SchemaObject) {
 	g := createObjectResolverFile(gen, object)
-	def := replaceObjectName(objectResolverTemplate, object)
+	def := replaceResolverPackagePath(objectResolverTemplate)
+	def = replaceObjectName(def, object)
 	def = replaceObjectPluralName(def, object)
 	g.P(def)
 }
 
 var objectResolverTemplate = `
-package main
+package ResolverPackage
 
 // CreateObjectName is the resolver for the createObjectName field.
 func (r *mutationResolver) CreateObjectName(ctx context.Context, input ent.CreateObjectNameInput) (*ent.ObjectName, error) {
@@ -81,7 +82,8 @@ func (r *mutationResolver) DeleteObjectPluralName(ctx context.Context, ids []uui
 
 func generateEntResolvers(gen *protogen.Plugin, objects []SchemaObject) {
 	g := createObjectResolversFile(gen)
-	g.P(objectResolversContent)
+	def := replaceResolverPackagePath(objectResolversContent)
+	g.P(def)
 	for _, object := range objects {
 		optsDef := getResolverOptsDef(object)
 		def := fmt.Sprintf(objectResolverDefinitionTemplate, optsDef)
@@ -125,7 +127,8 @@ func createObjectResolverFile(gen *protogen.Plugin, object SchemaObject) *protog
 
 func generateRootResolver(gen *protogen.Plugin) {
 	g := createRootResolverFile(gen)
-	g.P(resolverContent)
+	def := replaceResolverPackagePath(resolverContent)
+	g.P(def)
 }
 
 func createRootResolverFile(gen *protogen.Plugin) *protogen.GeneratedFile {
@@ -142,11 +145,9 @@ func getResolverFileName(resolverName string) string {
 }
 
 var resolverContent = `
-package main
+package ResolverPackage
 
 import (
-    "app/ent"
-    
     "github.com/99designs/gqlgen/graphql"
 )
 
@@ -161,7 +162,7 @@ func NewSchema(client *ent.Client) graphql.ExecutableSchema {
 }`
 
 var objectResolversContent = `
-package main
+package ResolverPackage
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -169,8 +170,6 @@ package main
 
 import (
 	"context"
-	"app/ent"
-	"fmt"
 	"github.com/google/uuid"
 )
 

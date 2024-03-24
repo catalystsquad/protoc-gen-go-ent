@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	"github.com/emirpasic/gods/sets/hashset"
 	"google.golang.org/protobuf/compiler/protogen"
 	"strings"
@@ -40,9 +41,9 @@ func getConfigFileName(name string) string {
 
 func writeAutoBind(g *protogen.GeneratedFile, objects []SchemaObject) {
 	g.P("autobind:")
-	g.P(indent, "- app/ent")
+	g.P(indent, fmt.Sprintf("- %s", *config.EntPackagePath))
 	for _, object := range objects {
-		g.P(indent, fmt.Sprintf("- app/ent/%s", strings.ToLower(object.GoType)))
+		g.P(indent, fmt.Sprintf("- %s/%s", *config.EntPackagePath, strings.ToLower(object.GoType)))
 	}
 }
 
@@ -88,7 +89,7 @@ func writeIdModel(g *protogen.GeneratedFile) {
 }
 
 func writeNodeModel(g *protogen.GeneratedFile) {
-	writeModel(g, "Node", "app/ent.Noder")
+	writeModel(g, "Node", fmt.Sprintf("%s.Noder", *config.EntPackagePath))
 }
 
 func writeModel(g *protogen.GeneratedFile, name, reference string) {
