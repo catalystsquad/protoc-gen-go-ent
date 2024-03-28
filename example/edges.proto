@@ -3,67 +3,68 @@ syntax = "proto3";
 package example;
 
 option go_package = "protoc-gen-go-ent/example";
+option (ent.ent_file_opts) = {generate: false};
 
 import "options/ent.proto";
 
 // this proto defines messages that represent the edge relationships documented here https://entgo.io/docs/schema-edges
 message User {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   //  one to one user -> card
   Card card = 2;
   //  one to one bidirectional user <-> user
-  User spouse = 3 [(ent.field).edge_options = {ref: "spouse"}];
+  User spouse = 3 [(ent.ent_field_opts).edge_options = {ref: "spouse"}];
   // one to many user -> pets
   repeated Pet pets = 4;
   // m2m
-  repeated Group groups = 5 [(ent.field).edge_options = {ref: "users"}];
+  repeated Group groups = 5 [(ent.ent_field_opts).edge_options = {ref: "users"}];
   // m2m same type
-  repeated User followers = 6 [(ent.field).edge_options = {ref: "following"}];
+  repeated User followers = 6 [(ent.ent_field_opts).edge_options = {ref: "following"}];
   repeated User following = 7;
   // m2m bidirectional
-  repeated User friends = 8 [(ent.field).edge_options = {ref: "friends"}];
+  repeated User friends = 8 [(ent.ent_field_opts).edge_options = {ref: "friends"}];
   string name = 9;
 }
 
 message Card {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   //  one to one card -> user
-  User holder = 2 [(ent.field).edge_options = {ref: "card"}];
+  User holder = 2 [(ent.ent_field_opts).edge_options = {ref: "card"}];
 }
 
 message Anode {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   // one to one same type node -> node
   Anode next = 2;
-  Anode previous = 3 [(ent.field).edge_options = {ref: "next"}];
+  Anode previous = 3 [(ent.ent_field_opts).edge_options = {ref: "next"}];
   // one to many same type node -> nodes
-  Anode parent = 4 [(ent.field).edge_options = {ref: "children"}];
+  Anode parent = 4 [(ent.ent_field_opts).edge_options = {ref: "children"}];
   repeated Anode children = 5;
 }
 
 message Pet {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   // many to one pet -> user
-  User owner = 2 [(ent.field).edge_options = {ref: "pets"}];
+  User owner = 2 [(ent.ent_field_opts).edge_options = {ref: "pets"}];
 }
 
 message Group {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   repeated User users = 2;
 }
 
 // a message that exercises edge options
 //message Person {
-//  option (ent.opts) = {gen: true};
-//  repeated Address address = 1 [(ent.field).edge_options = {storage_key: {table: "persons", columns: ["custom_addess_column_name", "custom_person_column_name"], symbols: ["custom_addess_symbol", "custom_person_symbol"]}}];
+//  option (ent.ent_message_opts) = {gen: true};
+//  repeated Address address = 1 [(ent.ent_field_opts).edge_options = {storage_key: {table: "persons", columns: ["custom_addess_column_name", "custom_person_column_name"], symbols: ["custom_addess_symbol", "custom_person_symbol"]}}];
 //}
 
 //message Address {
-//  option (ent.opts) = {gen: true};
-//  repeated Person resident = 1 [(ent.field).edge_options = {ref: "address", required: true, immutable: true, comment: "weh"}];
+//  option (ent.ent_message_opts) = {gen: true};
+//  repeated Person resident = 1 [(ent.ent_field_opts).edge_options = {ref: "address", required: true, immutable: true, comment: "weh"}];
 //}

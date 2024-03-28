@@ -5,3 +5,4 @@ plugins:
     opt:
       - paths=source_relative
       - genapp=true
+      - resolverpackage=main

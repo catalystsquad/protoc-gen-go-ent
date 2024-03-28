@@ -15,11 +15,15 @@ func generateEntSchemas(gen *protogen.Plugin, objects []SchemaObject) {
 
 func generateEntSchema(gen *protogen.Plugin, object SchemaObject) {
 	g := createSchemaFile(gen, object)
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/contrib/entgql"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema"})
+	writeImports(g, object)
 	g.P("package schema")
 	writeSchema(g, object)
+}
+
+func writeImports(g *protogen.GeneratedFile, object SchemaObject) {
+	for _, importName := range object.SchemaFileImports {
+		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: protogen.GoImportPath(importName)})
+	}
 }
 
 func writeSchema(g *protogen.GeneratedFile, object SchemaObject) {

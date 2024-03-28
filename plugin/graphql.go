@@ -181,7 +181,7 @@ func getFieldVarDefinition(field *protogen.Field) (string, error) {
 func getFullGraphqlType(field *protogen.Field) (string, error) {
 	var graphqlType string
 
-	if fieldTypeIsMessage(field) {
+	if fieldIsMessage(field) {
 		graphqlType = getFieldMessageType(field)
 	} else if fieldTypeIsEnum(field) {
 		graphqlType = getFieldEnumType(field)
@@ -194,6 +194,9 @@ func getFullGraphqlType(field *protogen.Field) (string, error) {
 			graphqlType, ok = protoToGraphqlTypes[kind]
 		}
 		if !ok {
+			if fieldIsTimestamp(field) {
+				return "Time", nil
+			}
 			return "", errors.New(fmt.Sprintf("unknown graphql type for proto type %s", kind))
 		}
 	}
@@ -238,7 +241,7 @@ func getGraphqlFieldNamesString(message *protogen.Message, includeIdField, inclu
 func getGraphqlFieldNames(message *protogen.Message, includeIdField, includeMessages bool) []string {
 	fieldNames := []string{}
 	for _, field := range getNonIgnoredFields(message) {
-		if !includeMessages && fieldTypeIsMessage(field) {
+		if !includeMessages && fieldIsMessage(field) {
 			continue
 		}
 		if !includeIdField && getFieldProtoName(field) == "id" {
@@ -264,7 +267,7 @@ func getMutationFieldNames(includeId bool, message *protogen.Message) []string {
 func getMutationFields(includeId bool, message *protogen.Message) []*protogen.Field {
 	mutationFields := []*protogen.Field{}
 	for _, field := range getNonIgnoredFields(message) {
-		if !fieldTypeIsMessage(field) {
+		if !fieldIsMessage(field) {
 			if !includeId && getFieldProtoName(field) == "id" {
 				continue
 			}

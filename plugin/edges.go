@@ -185,7 +185,7 @@ func writeEdgeAnnotations(builder *strings.Builder, edge *protogen.Field) error 
 		fieldMessage := getFieldMessage(edge)
 		orderFieldPrefix := getOrderFieldName(edge)
 		for _, field := range fieldMessage.Fields {
-			if !isIdField(field) && !fieldTypeIsMessage(field) {
+			if !isIdField(field) && !fieldIsMessage(field) {
 				orderFieldName := fmt.Sprintf("%s_%s", orderFieldPrefix, getOrderFieldName(field))
 				builder.WriteString(fmt.Sprintf("%s,", getOrderFieldDefinition(orderFieldName)))
 			}
@@ -432,9 +432,11 @@ func getFieldReferencingEdge(edge *protogen.Field) (fieldReferencingEdge *protog
 	edgeName := getFieldProtoName(edge)
 	fieldMessage := getFieldMessage(edge)
 	for _, field := range fieldMessage.Fields {
-		ref := getEdgeRef(field)
-		if ref == edgeName {
-			fieldReferencingEdge = field
+		if fieldIsMessage(field) {
+			ref := getEdgeRef(field)
+			if ref == edgeName {
+				fieldReferencingEdge = field
+			}
 		}
 	}
 
@@ -531,7 +533,7 @@ func messageHasFieldsOfOtherMessage(num int, a, b *protogen.Message) bool {
 	count := 0
 	bType := getMessageProtoName(b)
 	for _, field := range a.Fields {
-		if fieldTypeIsMessage(field) && getMessageProtoName(getFieldMessage(field)) == bType {
+		if fieldIsMessage(field) && getMessageProtoName(getFieldMessage(field)) == bType {
 			count++
 		}
 	}
@@ -543,7 +545,7 @@ func messageHasRepeatedFieldsOfOtherMessage(num int, a, b *protogen.Message) boo
 	count := 0
 	bType := getMessageProtoName(b)
 	for _, field := range a.Fields {
-		if fieldTypeIsMessage(field) && fieldIsRepeated(field) && getMessageProtoName(getFieldMessage(field)) == bType {
+		if fieldIsMessage(field) && fieldIsRepeated(field) && getMessageProtoName(getFieldMessage(field)) == bType {
 			count++
 		}
 	}

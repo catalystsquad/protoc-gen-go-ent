@@ -5,7 +5,6 @@ import (
 	"github.com/catalystsquad/protoc-gen-go-ent/config"
 	"github.com/catalystsquad/protoc-gen-go-ent/plugin"
 	"github.com/golang/glog"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -13,13 +12,7 @@ func main() {
 	flags := setupFlags()
 	setupLogging()
 	defer glog.Flush()
-
 	protogen.Options{ParamFunc: flags.Set}.Run(func(gen *protogen.Plugin) error {
-		// TODO: Refactor to not use workspaces so this doesn't matter
-		if lo.Contains(gen.Request.FileToGenerate, "options/ent.proto") {
-			// skip options
-			return nil
-		}
 		return plugin.Generate(gen)
 	})
 }

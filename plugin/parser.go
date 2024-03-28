@@ -10,7 +10,10 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/pluginpb"
 	"strings"
 )
 
@@ -98,10 +101,13 @@ type EntEdge struct {
 	Annotations []string
 }
 
+var request *pluginpb.CodeGeneratorRequest
+
 func parseFiles(gen *protogen.Plugin) ([]SchemaObject, error) {
+	request = gen.Request
 	objects := []SchemaObject{}
 	for _, f := range gen.Files {
-		if !f.Generate {
+		if !getFileOptions(f).Generate {
 			continue
 		}
 		fileObjects, err := ParseFile(gen, f)
@@ -178,7 +184,6 @@ func getGraphqlSchemaFileName(message *protogen.Message) string {
 
 func getObjectResolverFileName(message *protogen.Message) string {
 	res := fmt.Sprintf("%s/%s.resolvers.go", *config.GraphqlResolverDir, strcase.ToLowerCamel(getMessageProtoName(message)))
-	glog.Infof(res)
 	return res
 }
 
@@ -187,7 +192,24 @@ func getEntSchemaFileGoImportPath(message *protogen.Message) protogen.GoImportPa
 }
 
 func getEntSchemaFileImports(message *protogen.Message) []string {
-	return []string{}
+	schemaFileImports := []string{
+		"entgo.io/ent",
+		"entgo.io/contrib/entgql",
+		"entgo.io/ent/schema",
+	}
+	if shouldImportTime(message) {
+		schemaFileImports = append(schemaFileImports, "time")
+	}
+	return schemaFileImports
+}
+
+func shouldImportTime(message *protogen.Message) bool {
+	for _, field := range message.Fields {
+		if strings.Contains(getFieldOptions(field).Default, "time.") {
+			return true
+		}
+	}
+	return false
 }
 
 func getEntSchemaFields(message *protogen.Message) ([]EntField, error) {
@@ -347,7 +369,7 @@ func getEntEdgeAnnotations(field *protogen.Field) ([]string, error) {
 		fieldMessage := getFieldMessage(field)
 		orderFieldPrefix := getOrderFieldName(field)
 		for _, field := range fieldMessage.Fields {
-			if !isIdField(field) && !fieldTypeIsMessage(field) {
+			if !isIdField(field) && !fieldIsMessage(field) {
 				orderFieldName := fmt.Sprintf("%s_%s", orderFieldPrefix, getOrderFieldName(field))
 				annotations = append(annotations, getOrderFieldDefinition(orderFieldName))
 			}
@@ -458,6 +480,9 @@ func getEntFieldType(field *protogen.Field) (entFieldType EntFieldType, err erro
 		entFieldType, ok = protoTypeToEntTypeMap[kind]
 	}
 	if !ok {
+		if fieldIsTimestamp(field) {
+			return EntFieldTypeTime, nil
+		}
 		err = errors.New(fmt.Sprintf("unsupported field type: %s", kind))
 	}
 
@@ -629,4 +654,35 @@ var entTypeToStringTypeMap = map[EntFieldType]string{
 func shouldHandleMessage(message *protogen.Message) bool {
 	messageOptions := getMessageOptions(message)
 	return messageOptions.Gen
+}
+
+func logImportant(text string, args ...any) {
+	val := fmt.Sprintf(text, args...)
+	glog.Infof("***********************************************************%s***********************************************************", val)
+}
+
+func getFileOptions(file *protogen.File) ent.EntFileOptions {
+	emptyOptions := ent.EntFileOptions{}
+	if file.Desc.Options() == nil {
+		// return empty options
+		return emptyOptions
+	}
+	options, ok := file.Desc.Options().(*descriptorpb.FileOptions)
+	if !ok {
+		// return empty options
+		return emptyOptions
+	}
+
+	v := proto.GetExtension(options, ent.E_EntFileOpts)
+	if v == nil {
+		// return empty options
+		return emptyOptions
+	}
+
+	opts, ok := v.(*ent.EntFileOptions)
+	if !ok || opts == nil {
+		// return empty options
+		return emptyOptions
+	}
+	return *opts
 }

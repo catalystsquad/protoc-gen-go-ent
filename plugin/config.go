@@ -41,9 +41,9 @@ func getConfigFileName(name string) string {
 
 func writeAutoBind(g *protogen.GeneratedFile, objects []SchemaObject) {
 	g.P("autobind:")
-	g.P(indent, fmt.Sprintf("- %s", *config.EntPackagePath))
+	g.P(indent, fmt.Sprintf("- %s/ent", *config.EntPackagePath))
 	for _, object := range objects {
-		g.P(indent, fmt.Sprintf("- %s/%s", *config.EntPackagePath, strings.ToLower(object.GoType)))
+		g.P(indent, fmt.Sprintf("- %s/ent/%s", *config.EntPackagePath, strings.ToLower(object.GoType)))
 	}
 }
 
@@ -89,7 +89,7 @@ func writeIdModel(g *protogen.GeneratedFile) {
 }
 
 func writeNodeModel(g *protogen.GeneratedFile) {
-	writeModel(g, "Node", fmt.Sprintf("%s.Noder", *config.EntPackagePath))
+	writeModel(g, "Node", fmt.Sprintf("%s/ent.Noder", *config.EntPackagePath))
 }
 
 func writeModel(g *protogen.GeneratedFile, name, reference string) {

@@ -337,7 +337,7 @@ func getFieldOptions(field *protogen.Field) ent.EntFieldOptions {
 		return emptyOptions
 	}
 
-	v := proto.GetExtension(options, ent.E_Field)
+	v := proto.GetExtension(options, ent.E_EntFieldOpts)
 	if v == nil {
 		// return empty options
 		return emptyOptions
@@ -352,11 +352,23 @@ func getFieldOptions(field *protogen.Field) ent.EntFieldOptions {
 }
 
 func shouldGenerateField(field *protogen.Field) bool {
-	return !fieldIsIgnored(field) && !fieldTypeIsMessage(field) && !fieldTypeIsGroup(field)
+	return !fieldIsIgnored(field) && !fieldIsMessage(field) && !fieldTypeIsGroup(field)
 }
 
-func fieldTypeIsMessage(field *protogen.Field) bool {
+func fieldIsMessage(field *protogen.Field) bool {
 	return getFieldKind(field) == protoreflect.MessageKind
+}
+
+func fieldIsIncludedMessage(field *protogen.Field) bool {
+	return fieldIsMessage(field) && fieldIsIncludedInSource(field)
+}
+
+func fieldIsTimestamp(field *protogen.Field) bool {
+	return fieldIsMessage(field) && string(field.Message.Desc.FullName()) == "google.protobuf.Timestamp"
+}
+
+func fieldIsIncludedInSource(field *protogen.Field) bool {
+	return lo.Contains(request.FileToGenerate, field.Message.Location.SourceFile)
 }
 
 func fieldTypeIsEnum(field *protogen.Field) bool {

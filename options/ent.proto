@@ -6,50 +6,58 @@ option go_package = "github.com/catalystsquad/protoc-gen-go-ent/options;ent";
 
 import "google/protobuf/descriptor.proto";
 
-extend google.protobuf.MessageOptions {
-  EntMessageOptions opts = 52119;
+extend google.protobuf.FileOptions {
+  entFileOptions ent_file_opts = 52121;
 }
 
-message EntMessageOptions {
+message entFileOptions {
+  bool generate = 1;
+}
+
+extend google.protobuf.MessageOptions {
+  entMessageOptions ent_message_opts = 52121;
+}
+
+message entMessageOptions {
   bool gen = 1;
-  repeated string additionalImports = 2;
+  repeated string additional_imports = 2;
 }
 
 // Field level specifications
 extend google.protobuf.FieldOptions {
-  EntFieldOptions field = 52119;
+  entFieldOptions ent_field_opts = 52121;
 }
-message EntFieldOptions {
+message entFieldOptions {
   bool ignore = 1;
   bool nillable = 2;
   string default = 3;
-  string defaultFunc = 4;
+  string default_func = 4;
   bool unique = 5;
   bool immutable = 6;
   string comment = 7;
   string storage_key = 8;
   string struct_tag = 9;
-  bool includeUnspecifiedEnum = 10;
-  EntEdgeOptions edge_options = 11;
+  bool include_unspecified_enum = 10;
+  entEdgeOptions edge_options = 11;
   string go_type = 12;
   bool sensitive = 13;
   string graphql_type = 14;
 }
 
-message EntEdgeOptions {
+message entEdgeOptions {
   string to = 1;
   string from = 2;
   bool required = 3;
   bool immutable = 4;
-  EdgeStorageKey storage_key = 5;
-  string structTag = 6;
+  edgeStorageKey storage_key = 5;
+  string struct_tag = 6;
   string comment = 7;
   string ref = 9;
   bool bind = 10;
   string bind_field = 11;
 }
 
-message EdgeStorageKey {
+message edgeStorageKey {
   string table = 1;
   string column = 2;
   repeated string columns = 3;

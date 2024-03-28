@@ -3,8 +3,10 @@ syntax = "proto3";
 package example;
 
 option go_package = "protoc-gen-go-ent/example";
+option (ent.ent_file_opts) = {generate: true};
 
 import "options/ent.proto";
+import "google/protobuf/timestamp.proto";
 
 enum Origin {
   ORIGIN_UNSPECIFIED = 0;
@@ -13,7 +15,7 @@ enum Origin {
 }
 
 message Dummy {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   string aString = 2;
   repeated string someStrings = 18;
@@ -45,13 +47,14 @@ message Dummy {
   optional string anOptionalString = 16;
   Origin origin = 17;
   AnotherDummy another = 31;
+  google.protobuf.Timestamp created_at = 32 [(ent.ent_field_opts) = {immutable: true, default: "time.Now"}];
 }
 
 message AnotherDummy {
-  option (ent.opts) = {gen: true};
+  option (ent.ent_message_opts) = {gen: true};
   string id = 1;
   string name = 2;
-  Dummy dummy = 3 [(ent.field).edge_options = {ref: "another"}];
+  Dummy dummy = 3 [(ent.ent_field_opts).edge_options = {ref: "another"}];
 }
 
 // a message that exercises field options

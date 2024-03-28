@@ -17,15 +17,15 @@ models:
   Node:
     model:
       - app/ent.Noder
+  Uint32:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint32
   Uint64:
     model:
       - github.com/99designs/gqlgen/graphql.Uint64
   Float:
     model:
       - github.com/99designs/gqlgen/graphql.Float
-  Uint32:
-    model:
-      - github.com/99designs/gqlgen/graphql.Uint32
 schema:
   - ent.graphql
   - graphql_schema/dummy.graphql

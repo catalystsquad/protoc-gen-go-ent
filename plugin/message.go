@@ -173,16 +173,6 @@ func getMessageFilePackageName(file *protogen.File) string {
 	return "schema"
 }
 
-func writeSchemaFileImports(g *protogen.GeneratedFile, message *protogen.Message) {
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/contrib/entgql"})
-	g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: "entgo.io/ent/schema"})
-	messageOptions := getMessageOptions(message)
-	for _, additonalImport := range messageOptions.AdditionalImports {
-		g.QualifiedGoIdent(protogen.GoIdent{GoImportPath: protogen.GoImportPath(additonalImport)})
-	}
-}
-
 func writeSchemaFileStruct(g *protogen.GeneratedFile, message *protogen.Message) {
 	structName := getMessageStructName(message)
 	g.P(fmt.Sprintf("type %s struct {", structName))
@@ -199,7 +189,7 @@ func getMessageOptions(message *protogen.Message) ent.EntMessageOptions {
 	if options == nil {
 		return ent.EntMessageOptions{}
 	}
-	v := proto.GetExtension(options, ent.E_Opts)
+	v := proto.GetExtension(options, ent.E_EntMessageOpts)
 	if v == nil {
 		return ent.EntMessageOptions{}
 	}
@@ -224,14 +214,14 @@ func getNonIgnoredFields(message *protogen.Message) []*protogen.Field {
 
 func getNonMessageFields(message *protogen.Message) []*protogen.Field {
 	return lo.Filter(message.Fields, func(item *protogen.Field, index int) bool {
-		return !fieldTypeIsMessage(item)
+		return !fieldIsIncludedMessage(item)
 	})
 }
 
 func getMessageFields(message *protogen.Message) []*protogen.Field {
 	fields := []*protogen.Field{}
 	for _, field := range getNonIgnoredFields(message) {
-		if fieldTypeIsMessage(field) {
+		if fieldIsIncludedMessage(field) {
 			fields = append(fields, field)
 		}
 	}
